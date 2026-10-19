@@ -540,10 +540,27 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
     for(const [label,dx,dy] of [['←',-1,0],['↓',0,1],['→',1,0],['↑',0,-1]] as const){const button=el('button','path-pan',label);button.type='button';button.setAttribute('aria-label',`Pan path ${dx<0?'left':dx>0?'right':dy>0?'down':'up'}`);button.addEventListener('click',()=>panCamera(viewX+dx,viewY+dy));navigation.append(button);}
     const returnLive=el('button','path-live','Return to live');returnLive.type='button';returnLive.addEventListener('click',()=>{cancelCamera();cameraFollowing=true;layoutPath();});navigation.append(returnLive,pathStatus);
     junction.addEventListener('keydown',event=>{if(event.target!==junction)return;const delta=event.key==='ArrowLeft'?[-1,0]:event.key==='ArrowRight'?[1,0]:event.key==='ArrowDown'?[0,1]:event.key==='ArrowUp'?[0,-1]:undefined;if(delta){event.preventDefault();panCamera(viewX+delta[0]!,viewY+delta[1]!);}else if(event.key==='Home'){event.preventDefault();returnLive.click();}});
-    let dragging:{id:number;clientX:number;clientY:number;x:number;y:number}|undefined;
-    junction.addEventListener('pointerdown',event=>{if(event.button!==0||!pathActive&&!localCamera||(event.target as HTMLElement).closest('button,summary,details,input,select,a'))return;event.preventDefault();cancelCamera();dragging={id:event.pointerId,clientX:event.clientX,clientY:event.clientY,x:viewX,y:viewY};junction.setPointerCapture(event.pointerId);});
-    junction.addEventListener('pointermove',event=>{if(!dragging||event.pointerId!==dragging.id)return;const card=currentNode.getBoundingClientRect(),style=getComputedStyle(junction),dx=event.clientX-dragging.clientX,dy=event.clientY-dragging.clientY;if(Math.abs(dx)+Math.abs(dy)>4)panCamera(dragging.x-dx/(card.width+parseFloat(style.columnGap)),dragging.y-dy/(card.height+parseFloat(style.rowGap)));});
+    // Touch reserves vertical swipes for the page; only horizontal intent takes the camera.
+    let dragging:{id:number;clientX:number;clientY:number;x:number;y:number;touch:boolean;active:boolean}|undefined;
+    junction.addEventListener('pointerdown',event=>{
+      if(event.button!==0||!event.isPrimary||!pathActive&&!localCamera||(event.target as HTMLElement).closest('button,summary,details,input,select,a'))return;
+      const touch=event.pointerType==='touch';
+      dragging={id:event.pointerId,clientX:event.clientX,clientY:event.clientY,x:viewX,y:viewY,touch,active:!touch};
+      if(!touch){event.preventDefault();cancelCamera();junction.setPointerCapture(event.pointerId);}
+    });
+    junction.addEventListener('pointermove',event=>{
+      if(!dragging||event.pointerId!==dragging.id)return;
+      const dx=event.clientX-dragging.clientX,dy=event.clientY-dragging.clientY;
+      if(dragging.touch&&!dragging.active){
+        if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
+        if(Math.abs(dy)>=Math.abs(dx)){dragging=undefined;return;}
+        dragging.active=true;cancelCamera();junction.setPointerCapture(event.pointerId);
+      }
+      const card=currentNode.getBoundingClientRect(),style=getComputedStyle(junction);
+      if(Math.abs(dx)+Math.abs(dy)>4)panCamera(dragging.x-dx/(card.width+parseFloat(style.columnGap)),dragging.touch?dragging.y:dragging.y-dy/(card.height+parseFloat(style.rowGap)));
+    });
     for(const name of ['pointerup','pointercancel'])junction.addEventListener(name,()=>{dragging=undefined;});
+    junction.addEventListener('lostpointercapture',event=>{if(event.target===junction)dragging=undefined;});
     junction.addEventListener('focusout',()=>queueMicrotask(layoutPath));
     new ResizeObserver(layoutPath).observe(junction);
     const updatePath=(model:NetworkViewModel,retained:boolean):void=>{
