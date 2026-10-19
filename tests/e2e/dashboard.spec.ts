@@ -1349,3 +1349,76 @@ for(const width of [390,1440,3440])test(`Postdeploy stable equal navigator slots
   await scene.screenshot({path:info.outputPath(`equal-slots-${theme}.png`)});
  }
 });
+
+// CDP touch input exercises native browser scrolling, unlike dispatchEvent pointer fixtures.
+test('mobile timeline lets vertical touch swipes scroll the page and horizontal swipes pan history',async({page,browserName})=>{
+ if(browserName!=='chromium'){await prepare(page,false);test.skip(true,'Native touch injection uses Chromium CDP');}
+ await page.setViewportSize({width:390,height:844});
+ const context=page.context();
+ const touchClient=await context.newCDPSession(page);
+ await touchClient.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
+ try{
+  await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);
+  const scene=page.locator('.network-panel.mainnet .navigator-junction');
+  await expect(scene).toHaveAttribute('data-camera-following','true');
+  await scene.evaluate(element=>window.scrollTo(0,window.scrollY+element.getBoundingClientRect().top-80));
+  const box=await scene.boundingBox();if(!box)throw new Error('Timeline frame missing');
+  const client=await context.newCDPSession(page);
+  const settleScroll=()=>page.evaluate(()=>new Promise<void>(resolve=>{let last=window.scrollY,stable=0;const sample=()=>{const next=window.scrollY;stable=next===last?stable+1:0;last=next;if(stable>=10)resolve();else requestAnimationFrame(sample);};requestAnimationFrame(sample);}));
+  const swipe=async(x:number,y:number,dx:number,dy:number)=>{
+   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
+   for(let step=1;step<=12;step++){
+    await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx*step/12,y:y+dy*step/12}]});
+    await new Promise(resolve=>setTimeout(resolve,16));
+   }
+   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  };
+  await scene.locator('.navigator-current').evaluate(element=>{element.scrollTop=element.scrollHeight;});
+  const requests=await page.evaluate(()=>window.mockRequests.length);
+  const before=await page.evaluate(()=>window.scrollY),camera=await scene.getAttribute('data-view-y'),cameraX=await scene.getAttribute('data-view-x');
+  await swipe(box.x+box.width/2,box.y+box.height/2,0,-160);
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeGreaterThan(before+80);
+  await expect(scene).toHaveAttribute('data-camera-following','true');
+  await expect(scene).toHaveAttribute('data-view-y',camera??'');
+  await expect(scene).toHaveAttribute('data-view-x',cameraX??'');
+  await settleScroll();
+  // Start the reverse gesture within the frame after the page has moved.
+  const reverse=await scene.boundingBox();if(!reverse)throw new Error('Timeline frame missing after scrolling');
+  await scene.locator('.navigator-current').evaluate(element=>{element.scrollTop=0;});
+  const downStart=await page.evaluate(()=>window.scrollY);
+  await swipe(reverse.x+reverse.width/2,Math.max(100,reverse.y+reverse.height/2),0,160);
+  await expect.poll(()=>page.evaluate(()=>window.scrollY)).toBeLessThan(downStart-80);
+  await expect(scene).toHaveAttribute('data-camera-following','true');
+  await expect(scene).toHaveAttribute('data-view-y',camera??'');
+  await expect(scene).toHaveAttribute('data-view-x',cameraX??'');
+  await settleScroll();
+  const horizontal=await scene.boundingBox();if(!horizontal)throw new Error('Timeline frame missing for panning');
+  const viewX=Number(await scene.getAttribute('data-view-x')),viewY=await scene.getAttribute('data-view-y');
+  const horizontalY=await scene.evaluate(element=>{const style=getComputedStyle(element);return element.getBoundingClientRect().top+parseFloat(style.gridTemplateRows.split(' ')[0]??'0')+parseFloat(style.rowGap)/2;});
+  const scrollBeforeHorizontal=await page.evaluate(()=>window.scrollY);
+  await swipe(horizontal.x+horizontal.width*.8,horizontalY,-140,0);
+  await expect(scene).toHaveAttribute('data-camera-following','false');
+  await expect.poll(async()=>Number(await scene.getAttribute('data-view-x'))).toBeGreaterThan(viewX);
+  await expect(scene).toHaveAttribute('data-view-y',viewY??'');
+  expect(await page.evaluate(()=>window.scrollY)).toBe(scrollBeforeHorizontal);
+  const down=page.getByRole('button',{name:'Pan path down',exact:true});await down.click();
+  await expect.poll(async()=>Number(await scene.getAttribute('data-view-y'))).toBeGreaterThan(Number(viewY));
+  await page.getByRole('button',{name:'Return to live',exact:true}).click();
+  await expect(scene).toHaveAttribute('data-camera-following','true');
+  await scene.scrollIntoViewIfNeeded();
+  const cardText=scene.locator('.navigator-current > .eyebrow');const textBox=await cardText.boundingBox();if(!textBox)throw new Error('Missing card text touch target');
+  const stepX=await scene.evaluate(element=>{const card=element.querySelector('.navigator-current');if(!card)throw new Error('Missing current card');return card.getBoundingClientRect().width+parseFloat(getComputedStyle(element).columnGap);});
+  await swipe(textBox.x+textBox.width*.8,textBox.y+textBox.height/2,-60,0);
+  await expect(scene).toHaveAttribute('data-camera-following','false');
+  expect(Number(await scene.getAttribute('data-view-x'))).toBeGreaterThan(Number(cameraX)+45/stepX);
+  await page.getByRole('button',{name:'Return to live',exact:true}).click();
+  const mouseBox=await scene.boundingBox();if(!mouseBox)throw new Error('Missing mouse frame');
+  const mouseY=await scene.evaluate(element=>{const style=getComputedStyle(element);return element.getBoundingClientRect().top+parseFloat(style.gridTemplateRows.split(' ')[0]??'0')+parseFloat(style.rowGap)/2;});
+  await page.mouse.move(mouseBox.x+mouseBox.width*.7,mouseY);await page.mouse.down();await page.mouse.move(mouseBox.x+mouseBox.width*.4,mouseY-40,{steps:6});await page.mouse.up();
+  await expect(scene).toHaveAttribute('data-camera-following','false');
+  expect(Number(await scene.getAttribute('data-view-x'))).toBeGreaterThan(Number(cameraX));
+  expect(Number(await scene.getAttribute('data-view-y'))).toBeGreaterThan(Number(camera));
+  expect(await page.evaluate(()=>window.mockRequests.length)).toBe(requests);
+  await client.detach();
+ }finally{await touchClient.detach();}
+});

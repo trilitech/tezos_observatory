@@ -304,7 +304,7 @@ h1,h2,h3,h4,p{margin:0}h1{font-size:22px;letter-spacing:-.045em;line-height:1.15
 @media(min-width:2600px){.session-rail>.retained-history{height:480px}}
 
 /* A bounded world of observed cards; the camera and its viewport have separate owners. */
-.navigator-junction{--navigator-slot-height:clamp(180px,calc((100dvh - 360px)/3),228px);grid-template-rows:repeat(3,var(--navigator-slot-height));touch-action:none;cursor:grab}
+.navigator-junction{--navigator-slot-height:clamp(180px,calc((100dvh - 360px)/3),228px);grid-template-rows:repeat(3,var(--navigator-slot-height));touch-action:pan-y pinch-zoom;cursor:grab}
 .navigator-junction:active{cursor:grabbing}
 .navigator-camera{position:relative;grid-column:1/-1;grid-row:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(3,var(--navigator-slot-height));gap:inherit;min-width:0}
 .navigator-stage{grid-template-rows:repeat(3,var(--navigator-slot-height))}
@@ -328,3 +328,6 @@ h1,h2,h3,h4,p{margin:0}h1{font-size:22px;letter-spacing:-.045em;line-height:1.15
 
 .path-history-length{display:flex;align-items:center;gap:6px;font-size:12px}.path-history-length select{min-width:100px;padding:8px}.path-alternatives{font-size:12px;min-height:24px;padding:3px 6px;margin-top:auto}
 .path-observations{width:min(640px,calc(100vw - 24px));max-height:80dvh;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:16px;color:var(--ink);background:var(--surface)}.path-observations::backdrop{background:rgb(0 0 0 / .45)}.path-observations>h3,.path-observations>p{margin-bottom:12px}.path-observation-rows{padding-left:22px}.path-observation{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;padding:8px 0;border-bottom:1px solid var(--line)}.path-observation-paging{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+
+/* A card reaching its scroll boundary must hand the swipe back to the page. */
+.navigator-junction .navigator-previous,.navigator-junction .navigator-current,.navigator-junction .baker-opportunity,.navigator-junction .navigator-path-card{overscroll-behavior-y:auto;touch-action:pan-y pinch-zoom}
