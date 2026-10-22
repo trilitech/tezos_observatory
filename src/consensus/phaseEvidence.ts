@@ -91,7 +91,10 @@ function collectGroups(operations: readonly MonitoredOperation[], rights: readon
   const compared=comparison!==undefined&&comparisonAuthorityUsable(rights,level,comparison);
   const bySlot = committeeAuthority(rights).usable && authorityContext!==undefined ? new Map(rights.map(right => [right.slot,right.address])) : new Map<number,string>();
   type AccumulatedGroup = Omit<Group,"unknownSlots"|"conflicts"|"preEvidence"|"attEvidence"> & {unknownSlots:Set<number>;conflicts:Set<string>;preEvidence?:ObservationEvidence;attEvidence?:ObservationEvidence};
-  const groups = new Map<string,AccumulatedGroup>();
+  // A local tuple index avoids serializing the same context/payload for every
+  // receipt. Keep insertion order separately; no result outlives this call.
+  const groups:AccumulatedGroup[]=[];
+  const groupIndex=new Map<string,Map<number|null,Map<string,AccumulatedGroup>>>();
   // Each unique signer/phase/group enters one membership. Conflict marking visits
   // those memberships once, rather than comparing every payload pair.
   const memberships = new Map<string,{address:string;groups:Set<AccumulatedGroup>}>();
@@ -101,11 +104,16 @@ function collectGroups(operations: readonly MonitoredOperation[], rights: readon
     const receipt=operation.evidence;
     const compatibleCompared=compared&&comparison!==undefined&&receipt!==undefined&&receipt.source.baseUrl===comparison.source.baseUrl&&receipt.source.network===comparison.source.network&&receipt.receivedMonotonic===comparison.pendingEvidence.receivedMonotonic&&receipt.receivedAt===comparison.pendingEvidence.receivedAt&&(receipt.chainId===undefined||receipt.chainId===comparison.chainId)&&(receipt.observedHeadHash===undefined||receipt.observedHeadHash===comparison.head.hash)&&(receipt.requestedHeadHash===undefined||receipt.requestedHeadHash===comparison.head.hash);
     const contextKey = compatibleCompared?JSON.stringify(['comparison',comparison.source.baseUrl,comparison.chainId,comparison.head.hash,comparison.head.predecessor,comparison.context.protocolHash,level]):evidenceContext(operation.evidence,admission);
-    const key = JSON.stringify([contextKey,content.round,content.block_payload_hash]);
-    let group = groups.get(key);
+    let rounds=groupIndex.get(contextKey);
+    if(!rounds){rounds=new Map();groupIndex.set(contextKey,rounds);}
+    // Match JSON tuple identity for non-finite numeric inputs as well.
+    const roundKey=Number.isFinite(content.round)?content.round:null;
+    let payloads=rounds.get(roundKey);
+    if(!payloads){payloads=new Map();rounds.set(roundKey,payloads);}
+    let group = payloads.get(content.block_payload_hash);
     if (!group) {
       group = {level,round:content.round,payload:content.block_payload_hash,contextKey,pre:new Set(),att:new Set(),unknownSlots:new Set(),conflicts:new Set(),...(operation.evidence ? {evidence:operation.evidence} : {}),...(admission?{admission}:{})};
-      groups.set(key,group);
+      payloads.set(content.block_payload_hash,group);groups.push(group);
     }
     const compatible=comparison?compatibleCompared:authorityContext!==undefined && (authorityContext.level===content.level && observationContextCompatible(operation.evidence,authorityContext,admission));
     const address = compatible ? bySlot.get(content.slot) : undefined;
@@ -126,5 +134,5 @@ function collectGroups(operations: readonly MonitoredOperation[], rights: readon
     if (membership.groups.size < 2) continue;
     for (const group of membership.groups) group.conflicts.add(membership.address);
   }
-  return [...groups.values()].map(group => ({...group,conflicts:[...group.conflicts].sort(),unknownSlots:[...group.unknownSlots].sort((a,b)=>a-b)}));
+  return groups.map(group => ({...group,conflicts:[...group.conflicts].sort(),unknownSlots:[...group.unknownSlots].sort((a,b)=>a-b)}));
 }
