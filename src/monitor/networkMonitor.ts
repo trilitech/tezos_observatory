@@ -452,14 +452,17 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
   private publishOperations():void {
     this.lastOperationAt = Date.now();
     const generation = this.state.currentGeneration();
+    // One synchronous publication uses one captured operation buffer. Other
+    // emissions still collect current facts independently.
+    const operations=this.observations.rawOperations();
     if (generation === 0) {
-      this.initialOperations = this.observations.rawOperations();
-      this.emit();
+      this.initialOperations = operations;
+      this.emit(operations);
       return;
     }
     this.operationGeneration = generation;
-    this.state.syncOperations(generation, this.observations.rawOperations());
-    this.emit();
+    this.state.syncOperations(generation, operations);
+    this.emit(operations);
   }
   reconcileObservation(identity:string):boolean {
     const record=this.observations.target(identity);return record?this.reconcileTarget(record,true):false;
@@ -633,7 +636,7 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
       void run();
     }, 0);
   }
-  private emit(): void {
+  private emit(operations?:MonitorOperationBatch): void {
     const emittedMonotonic=performance.now();
     this.options.onUpdate({
       emittedMonotonic,
@@ -643,7 +646,7 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
       crossingHistoryPartial:this.observations.crossingState().uncertain,
       progression:this.progression,
       appliedProof:this.appliedProof,
-      rawOperations: this.observations.rawOperations(),
+      rawOperations: operations??this.observations.rawOperations(),
       observationTargets:this.observations.acceptedTargets(),
       history:this.observations.history(),
       inspection:this.observations.inspection(),
