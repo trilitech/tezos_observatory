@@ -1,0 +1,3 @@
+# Research validation
+
+Prior wrong-checkout output remains REJECTED in research-invalid-source.md. Fresh independent actor /root/neutral_current_source_research fork_turnsnone inspected11153141958c56808c3a9b5b31f21de6fe268322, source path absolute. Root transcribed factual output research-current-source.md; coordinator independently reread cameraTiming8, dashboardView590–635/689, navigatorPath14–16/90–99 and dashboard1171–1177 from exactworktree; consistent1200ms/linear/distinctretention. No browser runs implied. Actual researchposthook skip4 recorded. Ecosystem links from earlier invalidsource report are not incorporated as freshsourceproof.

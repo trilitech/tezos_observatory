@@ -1,0 +1,15 @@
+{
+  "exit": 4,
+  "stdout": {
+    "skill": "roster-plan",
+    "event": "pre",
+    "outcome": "skip",
+    "steps_run": 0,
+    "pending_llm_steps": [],
+    "abort_reason": null,
+    "warn_reasons": [],
+    "skip_reason": "hook file not found: /var/tmp/observatory-roadmap-closure/.harness/hooks/skills/roster-plan/pre.md",
+    "log": []
+  },
+  "stderr": ""
+}

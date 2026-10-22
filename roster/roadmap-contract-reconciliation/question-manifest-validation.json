@@ -1,0 +1,12 @@
+{
+  "digests": {
+    "questions": "0421f09011e208e118869eea6aebfd452b430f5c024fd578cf930e104517c535"
+  },
+  "questions": [
+    "Where are the current animation timing values defined, and how do they propagate into rendered behavior?",
+    "How are retention limits defined and applied across the existing navigator and detailed views?",
+    "How does the current evidence workflow preserve failed results and bind claims to their source, build, and hash?",
+    "[ecosystem] How do existing browser tools measure rendered-animation timing and associate measurements with the tested source and build?"
+  ],
+  "technical_ids": []
+}

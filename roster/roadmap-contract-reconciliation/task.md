@@ -1,0 +1,1 @@
+Reconcile the active V3 motion contract with the explicit maintainer 1.2 second full rendered-journey instruction, distinguish compact navigator retention from detailed inspection bounds, preserve unrelated obligations and historical failures. No product behavior changes.

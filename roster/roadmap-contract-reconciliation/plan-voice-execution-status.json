@@ -1,0 +1,22 @@
+{
+  "one": {
+    "artifact": "plan-voice-one.md",
+    "artifact_nonempty": true,
+    "terminal_output_present": true,
+    "process_status": "terminal; no matching CLI execution remains",
+    "exit": null,
+    "qualification": "Exact exit code was not retained; terminal final output is available and privately retained transcript is hash-bound. No exit-zero claim.",
+    "private_log_sha256": "a215207905183902a2d00682080799728b412ff9f92770299d9e22cdd09d0f45",
+    "log_retention": "Full execution transcript retained privately by coordinator; excluded from published source."
+  },
+  "two": {
+    "artifact": "plan-voice-two.md",
+    "artifact_nonempty": true,
+    "terminal_output_present": true,
+    "process_status": "terminal; no matching CLI execution remains",
+    "exit": 0,
+    "qualification": "Execution tool returned exit zero; private transcript is hash-bound.",
+    "private_log_sha256": "edd43130fee605ea06e2b35e9e0b615740cd7e0f0ff394f3a4207358cf06ac9a",
+    "log_retention": "Full execution transcript retained privately by coordinator; excluded from published source."
+  }
+}
