@@ -41,3 +41,14 @@ it("keeps the receipt of newly contributing delegates separate by phase and igno
  const group=groupsFor([first,second,replay],rights,120)[0] as unknown as {preEvidence?:{receivedMonotonic:number};attEvidence?:unknown};
  expect(group.preEvidence?.receivedMonotonic).toBe(2);expect(group.attEvidence).toBeUndefined();
 });
+
+it('preserves first-seen tuple order and receipt ownership across interleaved phases sources and numeric rounds',()=>{
+ const initial=operation('P,2]',0),replay={...initial,evidence:{...initial.evidence,receivedAt:50,receivedMonotonic:50}},foreign={...operation('P,2]',1),evidence:{...initial.evidence,source:{...source,baseUrl:'Other'}}};
+ const att={...operation('P,2]',1,'attestation'),evidence:{...initial.evidence,receivedAt:3,receivedMonotonic:3}};
+ const laterRound={...operation('P,2]',0),contents:[{...initial.contents[0]!,round:3}]};
+ const groups=groupsFor([initial,foreign,laterRound,att,replay],rights,120);
+ expect(groups.map(group=>[group.round,group.payload,group.pre.size,group.att.size])).toEqual([[2,'P,2]',1,1],[2,'P,2]',0,0],[3,'P,2]',1,0]]);
+ expect(groups[0]?.preEvidence?.receivedMonotonic).toBe(1);expect(groups[0]?.attEvidence?.receivedMonotonic).toBe(3);expect(groups[1]?.unknownSlots).toEqual([1]);
+ const invalid=[NaN,Infinity,-Infinity].map(round=>({...initial,contents:[{...initial.contents[0]!,round}]}));
+ expect(groupsFor(invalid,rights,120)).toHaveLength(1);
+});
