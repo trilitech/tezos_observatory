@@ -142,6 +142,8 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
   private bootstrapTimer: number | null = null;
   private headFallbackTimer: number | null = null;
   private operationStreaming = false;
+  /** Consumed by the matching healthy status callback; contains no domain facts. */
+  private operationPublication:{metrics:TransportMetrics;source:RpcSource;lifecycle:number;generation:number}|undefined;
   private operationSource: RpcSource | null = null;
   private headStreaming = false;
   private headFallbackActive = false;
@@ -193,8 +195,10 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
             path: "/chains/main/mempool/monitor_operations?validated=true&version=1",
             reconnectOnEnd: true,
             parse: asOperationBatch,
-            onValue: (batch, source) => {
+            onValue: (batch, source, _latency, metrics) => {
               if (!this.running) return;
+              const healthy=this.operationStreaming&&this.operationStatus.mode==='stream'&&this.operationStatus.error===null&&this.operationStatus.source?.baseUrl===source.baseUrl&&this.operationStatus.source.network===source.network;
+              const lifecycle=this.lifecycle,generation=this.state.currentGeneration();
               this.operationStreaming = true;
               this.operationSource = source;
               if(this.needsOperationFallback())this.enableFallback();
@@ -202,12 +206,17 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
               this.operationStatus = {
                 ...this.operationStatus,
                 mode: "stream",
+                source,
                 error: null,
+                ...(metrics?{metrics}:{}),
               };
               const evidence = this.receipt(source);
               this.acceptOperations(batch.map(operation => ({...operation, evidence})));
+              this.operationPublication=metrics&&healthy&&this.running&&lifecycle===this.lifecycle&&generation===this.state.currentGeneration()?{metrics,source,lifecycle,generation}:undefined;
             },
             onStatus: (source, error, metrics) => {
+              const publication=this.operationPublication;this.operationPublication=undefined;
+              const duplicate=error===null&&this.running&&this.operationStreaming&&publication!==undefined&&publication.lifecycle===this.lifecycle&&publication.generation===this.state.currentGeneration()&&publication.metrics===metrics&&publication.source.baseUrl===source?.baseUrl&&publication.source.network===source?.network&&this.operationStatus.mode==='stream'&&this.operationStatus.error===null&&this.operationStatus.metrics===metrics&&this.operationStatus.source?.baseUrl===source?.baseUrl&&this.operationStatus.source?.network===source?.network;
               if (error !== null) {
                 this.operationStreaming = false;
                 if(source)this.observations.interrupt(source);
@@ -225,7 +234,7 @@ export class NetworkMonitor<T extends NetworkDerivedState> {
                   (this.operationStreaming ? null : this.operationStatus.error),
                 metrics,
               };
-              this.emit();
+              if(!duplicate)this.emit();
             },
           });
     this.proposalTransport =
