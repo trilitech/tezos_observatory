@@ -1,0 +1,15 @@
+{
+  "source": "dff6932f4cff5d01f19dd075e1cdbe76f0f9acb3",
+  "base": "ce6711281f6dce982f32079b3e63176a4b7d4412",
+  "rebase_conflicts": false,
+  "node": "22.23.4",
+  "checks": {
+    "typecheck": 0,
+    "unit_tests": 451,
+    "unit_exit": 0,
+    "build": 0,
+    "claims_validate": 0,
+    "claims_check": 0
+  },
+  "acceptance_scope": "Integrated local gates only; source CI and complete release evidence remain required"
+}
