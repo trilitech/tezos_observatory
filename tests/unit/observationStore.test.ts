@@ -735,3 +735,19 @@ it("updates current receipt for genuinely replaced equal-power membership withou
  store.addOperations(Array.from({length:10000},(_,index)=>({...base,hash:`phase-turnover-${index}`,evidence:evidence(b,20+index),contents:[{...base.contents[0]!,slot:index===9999?1:999}]})));
  const current=store.target(record.identity)?.phases?.pre;expect(current?.power).toBe(3);expect(current?.currentEvidence.receivedMonotonic).toBe(10019);expect(current?.evidence).toBe(original?.evidence);expect(current?.maximumEvidence).toBe(original?.maximumEvidence);
 });
+
+it('keeps scoped replay receipts and existing raw identity rules for same-hash variants',async()=>{
+ installRpc();const store=new ObservationStore<Derived>('mainnet',sources.mainnet),data=new NetworkData('mainnet');
+ const original={...operation('shared-hash'),branch:'BranchA'};const record=store.addOperations([original])[0]!;
+ const proof=await data.reconcile(record.target,new AbortController().signal);store.accept(proof);
+ const scoped={...original,evidence:{...evidence(b,10),observedHeadHash:'H122',observedHeadLevel:122,chainId:'NetFixture'}};
+ store.addOperations([scoped]);expect(store.rawOperations()).toHaveLength(1);expect(store.rawOperations()[0]?.evidence?.receivedMonotonic).toBe(1);
+ const otherBranch={...scoped,branch:'BranchB',evidence:{...scoped.evidence,receivedMonotonic:11,receivedAt:11}};
+ const otherContent={...scoped,contents:[{...scoped.contents[0]!,slot:1}],evidence:{...scoped.evidence,receivedMonotonic:12,receivedAt:12}};
+ const otherSource={...scoped,evidence:{...scoped.evidence,source:a,receivedMonotonic:13,receivedAt:13}};
+ const otherLevel={...scoped,contents:[{...scoped.contents[0]!,level:124}],evidence:{...scoped.evidence,receivedMonotonic:14,receivedAt:14}};
+ store.addOperations([otherBranch,otherContent,otherSource,otherLevel]);
+ const retained=store.rawOperations();expect(retained).toHaveLength(3);expect(retained.some(value=>value.branch==='BranchB')).toBe(true);expect(retained.some(value=>value.contents[0]?.slot===1)).toBe(false);expect(retained.some(value=>value.evidence?.source.baseUrl===a.baseUrl)).toBe(true);expect(retained.some(value=>value.contents[0]?.level===124)).toBe(false);
+ store.addOperations([{...scoped,evidence:{...scoped.evidence,receivedMonotonic:20,receivedAt:20}}],proof.context);
+ expect(store.rawOperations()).toHaveLength(3);expect(store.rawOperations().find(value=>value.branch==='BranchA'&&value.contents[0]?.slot===0&&value.contents[0]?.level===123&&value.evidence?.source.baseUrl===b.baseUrl)?.evidence?.receivedMonotonic).toBe(1);
+});
