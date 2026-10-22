@@ -155,7 +155,7 @@ export async function inspectCapturedCandidate(panel:Locator,hash:string):Promis
 
 /** Operate the production disclosure and native radio, preserving its keyboard close path. */
 export async function choose(control:Locator,value:string):Promise<void>{
- const root=control.locator('..');if(await root.getAttribute('open')===null)await control.click();
+ const root=control.locator('..');for(const ancestor of await root.locator('xpath=ancestor::details').all())await openDetails(ancestor);if(await root.getAttribute('open')===null)await control.click();
  const radio=root.locator(`input[type=radio][value=${JSON.stringify(value)}]`);await radio.check();await radio.press('Escape');
 }
 

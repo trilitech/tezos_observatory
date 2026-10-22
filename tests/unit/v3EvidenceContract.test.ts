@@ -48,6 +48,12 @@ it('production binding rejects omitted, extra and mutated unbound imported asset
  const fixture:unknown=await import(new URL('./productionInventoryFixture.mjs',import.meta.url).href);
  if(!fixture||typeof fixture!=='object'||!('productionInventoryProbe' in fixture)||typeof fixture.productionInventoryProbe!=='function')throw new Error('Fixture unavailable');
  const result=fixture.productionInventoryProbe(process.cwd());
- expect(result.baseline.accepted).toBe(true);
+ expect(result.baseline.accepted).toBe(true);expect(result.packagedAuthor).toBe('explicit-author-fixture');
  for(const name of ['omitted','mutated','extra'])expect(result[name]).toMatchObject({accepted:false,error:expect.stringContaining('Production inventory is not exhaustive')});
+});
+
+
+it.each([undefined,'',' ',' actor','actor\nforged'])('packager rejects missing or malformed explicit author %s',author=>{
+ let diagnostic='';try{execFileSync(process.execPath,['scripts/package-v3-evidence.mjs','.'],{encoding:'utf8',env:{...process.env,V3_EVIDENCE_AUTHOR:author??''},stdio:'pipe'});}catch(error){diagnostic=String((error as {stderr?:unknown}).stderr);}
+ expect(diagnostic).toContain('V3_EVIDENCE_AUTHOR must explicitly name the actual capture author');
 });
