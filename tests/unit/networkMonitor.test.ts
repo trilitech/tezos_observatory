@@ -645,17 +645,20 @@ it('captures raw operations once per publication while later emissions independe
 it('real transport publishes current metrics with data and suppresses only subsequent matching healthy statuses',async()=>{
  vi.useFakeTimers();const views:NetworkMonitorView<NetworkDerivedState>[]=[];let operationStream:ReadableStreamDefaultController<Uint8Array>|undefined;
  const monitor=new NetworkMonitor({network:'mainnet',headSources:[source],operationSources:[source],derive:async()=>({refreshedAt:1}),fallbackOperations:async()=>[],onUpdate:view=>views.push(view),streamFactory:settings=>new StreamTransport({...settings,fetch:async input=>new Response(new ReadableStream<Uint8Array>({start(controller){if(String(input).includes('monitor_operations'))operationStream=controller;}}))})});
+ try {
  monitor.start();await vi.advanceTimersByTimeAsync(0);const stream=operationStream;if(!stream)throw new Error('Operation fixture stream unavailable');
  const packet=(hash:string)=>JSON.stringify([{hash,contents:[{kind:'preattestation',level:101,round:0,slot:0,block_payload_hash:'P'}]}])+'\n';
  const initial=views.length;stream.enqueue(new TextEncoder().encode(packet('first')));await vi.advanceTimersByTimeAsync(0);
  const first=views.slice(initial).filter(view=>view.rawOperations.some(value=>value.hash==='first'));expect(first).toHaveLength(2);expect(first[0]?.operationStream.metrics.messages).toBe(1);
  const before=views.length;stream.enqueue(new TextEncoder().encode(packet('second')));await vi.advanceTimersByTimeAsync(0);
  expect(views.slice(before)).toHaveLength(1);expect(views.at(-1)?.operationStream.metrics.messages).toBe(2);expect(views.at(-1)?.rawOperations.map(value=>value.hash)).toEqual(['first','second']);
- stream.error(new Error('connection interrupted'));await vi.advanceTimersByTimeAsync(0);expect(views.at(-1)?.operationStream.error).toContain('connection interrupted');monitor.stop();
+ stream.error(new Error('connection interrupted'));await vi.advanceTimersByTimeAsync(0);expect(views.at(-1)?.operationStream.error).toContain('connection interrupted');
+ } finally {monitor.stop();}
 });
 
 it('does not suppress different metrics source errors or custom three-argument status callbacks',()=>{
  const other={...source,baseUrl:'https://other'},fixture=setup({operationSources:[source,other]}),{monitor,operations,views}=fixture;
+ try {
  const packet=(hash:string)=>[{hash,contents:[{kind:'preattestation' as const,level:101,round:0,slot:0,block_payload_hash:'P'}]}];
  const emit=(hash:string,receipt=source)=>{const current={...metrics,messages:views.length};operations.settings.onValue(packet(hash),receipt,0,current);return current;};
  let current=emit('first');let before=views.length;operations.settings.onStatus(source,null,current);expect(views.length).toBe(before+1);
@@ -666,5 +669,6 @@ it('does not suppress different metrics source errors or custom three-argument s
  current=emit('recovered',other);before=views.length;operations.settings.onStatus(other,null,current);expect(views.length).toBe(before+1);
  operations.value(packet('custom'),other);before=views.length;operations.settings.onStatus(other,null,current);expect(views.length).toBe(before+1);
  current=emit('head-boundary',other);fixture.heads.value(header(100));before=views.length;operations.settings.onStatus(other,null,current);expect(views.length).toBe(before+1);
- current=emit('lifecycle-boundary',other);monitor.stop();monitor.start();before=views.length;operations.settings.onStatus(other,null,current);expect(views.length).toBe(before+1);monitor.stop();
+ current=emit('lifecycle-boundary',other);monitor.stop();monitor.start();before=views.length;operations.settings.onStatus(other,null,current);expect(views.length).toBe(before+1);
+ } finally {monitor.stop();}
 });
