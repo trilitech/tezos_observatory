@@ -1000,13 +1000,13 @@ test("foundations AC-3 autonomous B authority remains readable without primary a
 
 
 test('V3 AC-22 theme is explicit persistent and follows system only in system mode',async({page},info)=>{
- const states:unknown[]=[];const capture=async()=>states.push(await page.evaluate(()=>({at:performance.now(),osDark:matchMedia('(prefers-color-scheme: dark)').matches,resolved:document.documentElement.dataset.theme,selected:document.querySelector('.appearance input:checked')?.getAttribute('value')})));
+ const states:unknown[]=[];const capture=async()=>states.push(await page.evaluate(()=>({at:performance.now(),osDark:matchMedia('(prefers-color-scheme: dark)').matches,resolved:document.documentElement.dataset.theme,selected:document.querySelector('.appearance > .native-choice > .choice-options > .choice-option > input:checked')?.getAttribute('value')})));
  await prepare(page,false);
  const theme=page.getByLabel('Appearance');
  await expect(theme).toBeVisible();
  await choose(theme,'light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');await capture();
  await page.emulateMedia({colorScheme:'dark'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');await capture();
- await page.reload();await expect(theme.locator("..").locator("input:checked" )).toHaveValue('light');
+ await page.reload();await expect(theme.locator('..').locator(':scope > .choice-options > .choice-option > input:checked')).toHaveValue('light');
  await choose(theme,'system');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await capture();
  await page.emulateMedia({colorScheme:'light'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');await capture();
  await info.attach('actual-system-preference-transition',{body:JSON.stringify(states),contentType:'application/json'});
@@ -1184,7 +1184,7 @@ for(const reader of ['settled','rapid','delayed'] as const)test(reader==='settle
 for(const storage of ['missing','corrupt','denied'] as const)test(`V3 AC-22 ${storage} storage preserves system mode and explicit session choice`,async({page})=>{
  await page.emulateMedia({colorScheme:'dark'});
  await page.addInitScript(mode=>{if(mode==='corrupt')localStorage.setItem('observatory:theme','broken-value');else localStorage.removeItem('observatory:theme');if(mode==='denied'){Storage.prototype.getItem=()=>{throw new DOMException('Storage denied','SecurityError');};Storage.prototype.setItem=()=>{throw new DOMException('Storage denied','SecurityError');};}},storage);
- await prepare(page,false);const theme=page.getByLabel('Appearance');await expect(theme.locator("..").locator("input:checked" )).toHaveValue('system');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
+ await prepare(page,false);const theme=page.getByLabel('Appearance');await expect(theme.locator('..').locator(':scope > .choice-options > .choice-option > input:checked')).toHaveValue('system');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  await page.emulateMedia({colorScheme:'light'});await expect(page.locator('html')).toHaveAttribute('data-theme','light');await choose(theme,'dark');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  await page.emulateMedia({colorScheme:'dark'});await page.emulateMedia({colorScheme:'light'});await expect(page.locator('html')).toHaveAttribute('data-theme','dark');
  if(storage==='denied')await expect(page.locator('.theme-notice')).toHaveText('Theme saved for this session only');else await expect(page.locator('.theme-notice')).toBeHidden();
