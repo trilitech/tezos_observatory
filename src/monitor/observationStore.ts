@@ -180,17 +180,27 @@ export class ObservationStore<T> {
   addOperations(batch:readonly MonitoredOperation[],snapshotContext?:TargetContext):readonly ObservationTarget<T>[] {
     if(snapshotContext && !this.contextAuthorized(snapshotContext))throw new Error("Unproven snapshot replay context");
     const replayIdentity=(operation:MonitoredOperation):string=>JSON.stringify([operation.evidence?.source.network,operation.evidence?.source.baseUrl,operation.hash,operation.branch??null,operation.contents]);
-    const replayIndex=new Map<string,MonitoredOperation[]>();
-    for(const operation of this.raw.values()){const key=replayIdentity(operation),members=replayIndex.get(key)??[];members.push(operation);replayIndex.set(key,members);}
+    // Ordinary unscoped stream receipts cannot use replay proofs. Build the
+    // retained-operation index only when a scoped receipt actually needs it.
+    // Keep this local to the batch: bindings and source ownership may change.
+    const replayHashes=new Set(batch.map(operation=>operation.hash));
+    let replayIndex:Map<string,MonitoredOperation[]>|undefined;
+    const replayMembers=(operation:MonitoredOperation):readonly MonitoredOperation[]=>{
+      if(!replayIndex){
+        replayIndex=new Map();
+        for(const retained of this.raw.values()){if(!replayHashes.has(retained.hash))continue;const key=replayIdentity(retained),members=replayIndex.get(key)??[];members.push(retained);replayIndex.set(key,members);}
+      }
+      return replayIndex.get(replayIdentity(operation))??[];
+    };
     const fresh=batch.filter(operation=>{
       if(!this.allowed(operation.evidence?.source) || this.raw.get(operation))return false;
       const evidence=operation.evidence;
-      if(snapshotContext && (replayIndex.get(replayIdentity(operation))??[]).some(original=>{
+      if(snapshotContext && replayMembers(operation).some(original=>{
         const proof=this.bindings.get(operationIdentity(original))?.get(snapshotContext.key);
         return proof!==undefined && proof.source.baseUrl===evidence.source.baseUrl && proof.chainId===snapshotContext.observer.chainId && proof.headHash===snapshotContext.observer.header.hash && proof.protocolHash===snapshotContext.protocolHash && (evidence.chainId===undefined || evidence.chainId===proof.chainId) && (evidence.observedHeadHash===undefined || evidence.observedHeadHash===proof.headHash);
       }))return false;
       if(evidence.observedHeadHash===undefined)return true;
-      return !(replayIndex.get(replayIdentity(operation))??[]).some(original=>{
+      return !replayMembers(operation).some(original=>{
         const proofs=this.bindings.get(operationIdentity(original));
         const observed=this.observerHead(evidence.source);
         if(!proofs?.size && original.evidence?.observedHeadHash===undefined && original.evidence?.requestedHeadHash===undefined && observed && observed.hash===evidence.observedHeadHash && (original.evidence?.chainId===undefined || original.evidence.chainId===observed.chainId))return true;
