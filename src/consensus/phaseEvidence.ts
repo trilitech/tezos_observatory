@@ -122,7 +122,8 @@ function collectGroups(operations: readonly MonitoredOperation[], rights: readon
     if (group[phase].has(address)) continue;
     group[phase].add(address);
     const phaseReceipt=phase==="pre"?"preEvidence":"attEvidence";
-    if(operation.evidence && (!group[phaseReceipt] || operation.evidence.receivedMonotonic>group[phaseReceipt]!.receivedMonotonic))group[phaseReceipt]=operation.evidence;
+    const previousReceipt=group[phaseReceipt];
+    if(operation.evidence && (!previousReceipt || operation.evidence.receivedMonotonic>previousReceipt.receivedMonotonic))group[phaseReceipt]=operation.evidence;
     const membershipKey = JSON.stringify([contextKey,content.round,phase,address]);
     let membership = memberships.get(membershipKey);
     if (!membership) {
