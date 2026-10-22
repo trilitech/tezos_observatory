@@ -1,0 +1,125 @@
+{
+  "task": "roadmap-contract-reconciliation",
+  "date": "2026-10-22T07:08:32.706366+00:00",
+  "status": "GO",
+  "auto_fixes_applied": [],
+  "findings": [
+    {
+      "severity": "HIGH",
+      "confidence": 5,
+      "path": "roster/roadmap-contract-reconciliation/plan-voice-one-execution.log",
+      "line": 4,
+      "category": "publication-policy",
+      "summary": "Raw runtime execution logs violate public-safe evidence policy",
+      "evidence": "Both plan-voice execution logs include machine-local workdir line4, model line5, session ID line11, user configuration paths lines64-68. Project-authority.md forbids publishing machine-local operational material. No token leakage is asserted.",
+      "fix": "Retain original raw logs privately with SHA256 attestations, remove raw logs from tracked publication set, and reference only public reasoned plan-voice markdown plus truthful execution status and hashes.",
+      "fingerprint": "roster/roadmap-contract-reconciliation/plan-voice-one-execution.log:4:publication-policy",
+      "specialist": "reviewer",
+      "status": "RESOLVED",
+      "boundary": "public-repository",
+      "invariant": "No machine-local operational material published",
+      "failure_mode": "Raw CLI session metadata committed to publication-bound amendment",
+      "acs": [],
+      "convergence": [],
+      "first_seen_round": 1,
+      "resolved_round": 1,
+      "reopened_from_round": null,
+      "reopened_at_round": null,
+      "check": null,
+      "check_encodable": true,
+      "red_verified": null,
+      "pre_fix_sha": null,
+      "check_blob": null,
+      "fingerprint_v2": "public-repository|No machine-local operational material published|Raw CLI session metadata committed to publication-bound amendment",
+      "fid": "roster/roadmap-contract-reconciliation/plan-voice-one-execution.log:4:publication-policy#669cc283"
+    },
+    {
+      "severity": "MEDIUM",
+      "confidence": 5,
+      "path": "briefs/roadmap-contract-reconciliation-manifest.txt",
+      "line": 0,
+      "category": "scope",
+      "summary": "Scope gate skipped because no task manifest exists",
+      "evidence": "Full-mode amendment has implementation/reviewer briefs but no scope manifest; exact57-file diff inspected directly.",
+      "fix": "Record deterministic skip; source delta reviewed against approved brief.",
+      "fingerprint": "briefs/roadmap-contract-reconciliation-manifest.txt:0:scope",
+      "specialist": "scope-gate",
+      "status": "OPEN",
+      "first_seen_round": 1,
+      "resolved_round": null,
+      "reopened_from_round": null,
+      "reopened_at_round": null,
+      "check": null,
+      "check_encodable": true,
+      "red_verified": null,
+      "pre_fix_sha": null,
+      "check_blob": null,
+      "fid": "briefs/roadmap-contract-reconciliation-manifest.txt:0:scope#6fa068e5"
+    }
+  ],
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "auto_fixed": 0
+  },
+  "no_go_reason": {
+    "type": null,
+    "cause": null,
+    "failed_acs": []
+  },
+  "no_go_round": 0,
+  "round": 1,
+  "cycle": 1,
+  "rounds_audit": [
+    {
+      "round": 1,
+      "reviewed_sha": "76b02600e80806535913cbe9bd7442394568aaa6",
+      "fix_sha": "176984c758c72543e8d2a52225ad7085b50d839f",
+      "specialists_run": [
+        {
+          "name": "reviewer",
+          "selection_reason": "Direct independent reviewer pass for bounded documentary amendment; no separate child actor claimed"
+        },
+        {
+          "name": "spec-compliance",
+          "selection_reason": "Direct independent reviewer pass for bounded documentary amendment; no separate child actor claimed"
+        },
+        {
+          "name": "code-quality-auditor",
+          "selection_reason": "Direct independent reviewer pass for bounded documentary amendment; no separate child actor claimed"
+        },
+        {
+          "name": "architect",
+          "selection_reason": "Direct independent reviewer pass for bounded documentary amendment; no separate child actor claimed"
+        }
+      ],
+      "trace_schema_version": "1.0",
+      "strike": false
+    }
+  ],
+  "cross_runtime": {},
+  "streak_override": null,
+  "mode": "full",
+  "escalation_needed": false,
+  "escalation_reason": null,
+  "normalized_by": "2.0.0",
+  "acceptance_scope": "Documentary amendment only; full source-bound release evidence remains open",
+  "gate_evidence": {
+    "clean_install": 0,
+    "typecheck": 0,
+    "unit_tests": 443,
+    "build": 0,
+    "claims_validate": 0,
+    "claims_check": 0,
+    "e2e_passed": 345,
+    "e2e_explicitly_skipped": 1,
+    "e2e_exit": 0
+  },
+  "resolved_same_round": "HIGH raw log publication finding resolved by rewritten176984c; private SHA256 and absence from proposed history independently verified; no pre-fix NO-GO emitted, no red-green claim",
+  "notes": [
+    "Preserve resolved finding per coordinator instruction; do not erase publication audit history on GO.",
+    "Scope manifest absent; medium informational skip. Cross-runtime skipped under Codex-only project policy. Separate QA root-owned."
+  ]
+}
