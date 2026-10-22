@@ -1,0 +1,66 @@
+{
+  "source": "176984c758c72543e8d2a52225ad7085b50d839f",
+  "product_identical_to_tested": "76b02600e80806535913cbe9bd7442394568aaa6",
+  "commands": [
+    {
+      "command": "Node22 npm ci",
+      "exit": 0
+    },
+    {
+      "command": "npm run check",
+      "exit": 0
+    },
+    {
+      "command": "npm test:443",
+      "exit": 0
+    },
+    {
+      "command": "npm run build",
+      "exit": 0
+    },
+    {
+      "command": "npm run test:e2e:345passed1explicitSkip",
+      "exit": 0
+    },
+    {
+      "command": "claims-reconcile validate",
+      "exit": 0
+    },
+    {
+      "command": "claims-reconcile check",
+      "exit": 0
+    },
+    {
+      "command": "review-bundle-verify",
+      "exit": 0
+    },
+    {
+      "command": "review-lifecycle absent-prior",
+      "exit": 0
+    },
+    {
+      "command": "review-normalize",
+      "exit": 0
+    },
+    {
+      "command": "check-review-convergence full",
+      "exit": 0
+    },
+    {
+      "command": "upstream review pre hook",
+      "exit": 4
+    },
+    {
+      "command": "upstream review post hook",
+      "exit": 4
+    }
+  ],
+  "scope": "No product edit; only three metadata hygiene files differ between tested and final commit",
+  "skips": [
+    "deterministic scope gate: no task manifest",
+    "cross-runtime: project Codex-only policy",
+    "nested specialist actors: direct conditional passes by reviewer, no child execution claimed",
+    "CHECK2/CHECK13 criterion interfaces: separately known execution gaps, not falsely passed by broad browser suite",
+    "full source-bound visual/native/manualCHECK38 and AC24: remain roadmap work"
+  ]
+}
