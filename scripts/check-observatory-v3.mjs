@@ -30,17 +30,19 @@ export function classifyBrowserReport(report,status,criterion,titles){
  if(failures.length){if(status!==1)throw new Error('Inconsistent assertion process status');return 1;}
  if(status!==0)throw new Error('Nonzero process despite passed scenarios');return 0;
 }
-export async function run(args){
+export async function run(args,spawn=spawnSync){
  try{
   const [criterion,...options]=args;
   if(!/^AC-(?:0[1-9]|[12][0-9]|3[0-7])$/.test(criterion??'')||options.length!==2||options[0]!=='--browsers'||options[1]!=='chromium,firefox')throw new Error('Use AC-01 through AC-37 --browsers chromium,firefox; CHECK-38 is independent manual review');
   const manifest=JSON.parse(readFileSync(new URL('../roster/observatory-v3/check-scenarios.json',import.meta.url),'utf8'));
   const titles=manifest[criterion];if(!titles?.length)throw new Error(`Required scenarios not implemented: ${criterion}`);
   const escape=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const child=spawnSync('rtk',['proxy',process.execPath,'node_modules/@playwright/test/cli.js','test','--config=playwright.v3.config.ts','--grep',titles.map(escape).join('|'),'--project','chromium','--project','firefox','--reporter=json'],{encoding:'utf8',maxBuffer:50_000_000,timeout:900_000});
-  const reportRoot=process.env.V3_CHECK_REPORT_DIR??tmpdir();mkdirSync(reportRoot,{recursive:true});const directory=mkdtempSync(resolve(reportRoot,`observatory-v3-${criterion}-`));const reportPath=resolve(directory,`${criterion}.playwright.json`);writeFileSync(reportPath,child.stdout??'');writeFileSync(resolve(directory,`${criterion}.stderr.log`),child.stderr??'');console.error(JSON.stringify({namespace:'observatory-v3',criterion,reportPath,reportSha256:createHash('sha256').update(child.stdout??'').digest('hex')}));
+  const reportRoot=process.env.V3_CHECK_REPORT_DIR??tmpdir();mkdirSync(reportRoot,{recursive:true});const directory=mkdtempSync(resolve(reportRoot,`observatory-v3-${criterion}-`));const reportPath=resolve(directory,`${criterion}.playwright.json`);
+  const child=spawn('rtk',['proxy',process.execPath,'node_modules/@playwright/test/cli.js','test','--config=playwright.v3.config.ts','--grep',titles.map(escape).join('|'),'--project','chromium','--project','firefox','--reporter=json'],{encoding:'utf8',maxBuffer:50_000_000,timeout:900_000,env:{...process.env,PLAYWRIGHT_JSON_OUTPUT_FILE:reportPath}});
+  writeFileSync(resolve(directory,`${criterion}.stdout.log`),child.stdout??'');writeFileSync(resolve(directory,`${criterion}.stderr.log`),child.stderr??'');
+  let body;try{body=readFileSync(reportPath);}finally{console.error(JSON.stringify({namespace:'observatory-v3',criterion,reportPath,reportSha256:body?createHash('sha256').update(body).digest('hex'):null}));}
   if(child.error||child.signal)throw child.error??new Error('Browser process interrupted');
-  const report=JSON.parse(child.stdout);const code=classifyBrowserReport(report,child.status,criterion,titles);
+  const report=JSON.parse(body.toString('utf8'));const code=classifyBrowserReport(report,child.status,criterion,titles);
   console.log(JSON.stringify({namespace:'observatory-v3',criterion,result:code===0?'PASS':'ASSERTION_FAILED',scenarios:titles.length,engines:['chromium','firefox']}));return code;
  }catch(error){console.error(error);return 2;}
 }
