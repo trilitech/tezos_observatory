@@ -14,7 +14,7 @@ test('V3 AC-36 real native title tooltip surfaces are captured in both themes at
  const binding=getBinding();test.setTimeout(240000);const display=process.env['DISPLAY'],directory=process.env['V3_EVIDENCE_DIR'],xdotool=process.env['V3_XDOTOOL'];
  if(!display||!directory||!xdotool)throw new Error('Native capture requires isolated DISPLAY, V3_XDOTOOL and V3_EVIDENCE_DIR');
  await mkdir(directory,{recursive:true});const failures:string[]=[];page.on('pageerror',error=>failures.push(error.message));
- await page.clock.install();await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);await expect(page.locator('.mainnet .pre .gauge-exact')).toHaveText('600 / 30,000');await expect(page.locator('select:not(.palette-select):not([aria-label="History length"])')).toHaveCount(0);await expect(page.getByLabel('Colour palette')).toHaveCount(1);
+ await page.clock.install();await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);await expect(page.locator('.mainnet .pre .gauge-exact')).toHaveText('600 / 30,000');await expect(page.locator('select')).toHaveCount(0);await expect(page.getByLabel('Colour palette')).toHaveCount(1);
  await page.clock.pauseAt(new Date(Date.now()+1000));
  const records:unknown[]=[];
  const geometry=()=>page.evaluate(()=>({screenX,screenY,outerWidth,outerHeight,innerWidth,innerHeight,devicePixelRatio,assets:[...document.scripts].map(script=>script.src).filter(Boolean)}));

@@ -289,7 +289,8 @@ h1,h2,h3,h4,p{margin:0}h1{font-size:22px;letter-spacing:-.045em;line-height:1.15
 /* Both preferences stay inside the existing keyboard-accessible Appearance disclosure. */
 .appearance .choice-options{width:248px;max-height:min(430px,70dvh)}
 .palette-label{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);margin-top:6px;padding:12px 10px 6px;font-size:13px;font-weight:600}
-.palette-select{width:100%;min-height:44px;font-weight:400}
+.appearance .palette-choice{display:block;width:100%;margin-top:6px}.palette-choice>summary{width:100%;min-height:44px;font-weight:400}
+.appearance .palette-choice>.choice-options{position:static;width:100%;max-width:100%;max-height:240px;margin-top:4px;box-shadow:none}
 .palette-notice{display:block;padding:6px 10px;font-size:12px;color:var(--muted)}
 @media(max-width:700px){.appearance .choice-options{width:248px;max-width:calc(100vw - 24px)}}
 
@@ -326,7 +327,9 @@ h1,h2,h3,h4,p{margin:0}h1{font-size:22px;letter-spacing:-.045em;line-height:1.15
 
 .navigator-current,.navigator-path-card{gap:4px;padding:10px}.navigator-current>.eyebrow,.navigator-path-card>.eyebrow{line-height:1.2}.navigator-current>.branch-target,.navigator-path-card>.branch-target{line-height:1.25}.navigator-current>.subtle,.navigator-current>.address-text,.navigator-path-card>.subtle,.navigator-path-card>.address-text{line-height:1.35}.navigator-current>.address-copy,.navigator-path-card>.address-copy{margin-top:3px}
 
-.path-history-length{display:flex;align-items:center;gap:6px;font-size:12px}.path-history-length select{min-width:100px;padding:8px}.path-alternatives{font-size:12px;min-height:24px;padding:3px 6px;margin-top:auto}
+.path-history-length{display:flex;align-items:center;gap:6px;font-size:12px}.path-history-length>.native-choice{min-width:100px}.path-history-length>.native-choice>summary{min-height:44px;padding:8px}
+.path-history-length>.native-choice>.choice-options{position:absolute;top:100%;left:0;width:max-content;max-width:calc(100vw - 24px);max-height:min(320px,60dvh)}
+.navigator-navigation:has(.path-history-length>.native-choice[open]){overflow:visible}.path-alternatives{font-size:12px;min-height:24px;padding:3px 6px;margin-top:auto}
 .path-observations{width:min(640px,calc(100vw - 24px));max-height:80dvh;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:16px;color:var(--ink);background:var(--surface)}.path-observations::backdrop{background:rgb(0 0 0 / .45)}.path-observations>h3,.path-observations>p{margin-bottom:12px}.path-observation-rows{padding-left:22px}.path-observation{display:flex;flex-direction:column;gap:6px;margin:0 0 14px;padding:8px 0;border-bottom:1px solid var(--line)}.path-observation-paging{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
 
 /* A card reaching its scroll boundary must hand the swipe back to the page. */

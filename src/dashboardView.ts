@@ -300,19 +300,18 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
   const applyTheme = () => {document.documentElement.dataset.theme = theme.value === 'system' ? systemTheme.matches ? 'dark' : 'light' : theme.value;};
   theme.onChange(() => {applyTheme(); try {localStorage.setItem('observatory:theme', theme.value); themeNotice.hidden = true;} catch {themeNotice.hidden = false; set(themeNotice, 'Theme saved for this session only');}});
   systemTheme.addEventListener('change', () => {if (theme.value === 'system') applyTheme();}); applyTheme();
-  const paletteLabel = el('label', 'palette-label', 'Colour palette');
-  const palette = el('select', 'palette-select'); palette.setAttribute('aria-label', 'Colour palette');
+  const paletteLabel = el('div', 'palette-label', 'Colour palette');
   const paletteOptions = [['pollen','Graphite & pollen'],['braise','Braise'],['cinabre','Encre & cinabre'],['ocre','Pierre & ocre'],['reference','Forest / copper']] as const;
-  for (const [value, label] of paletteOptions) {const option = el('option', '', label); option.value = value; palette.append(option);}
+  const palette = nativeChoice('Colour palette',paletteOptions);palette.root.classList.add('palette-choice');
   const paletteNotice = el('span', 'palette-notice', 'Palette saved for this session only'); paletteNotice.hidden = true;
   const knownPalette = (value: string | null) => paletteOptions.some(([id]) => id === value) ? value ?? 'pollen' : 'pollen';
   try {palette.value = knownPalette(localStorage.getItem('observatory:palette'));} catch {palette.value = 'pollen';}
   const applyPalette = () => {document.documentElement.dataset.palette = palette.value;};
-  palette.addEventListener('change', event => {
+  palette.group.addEventListener('change', event => {
     event.stopPropagation(); applyPalette();
     try {localStorage.setItem('observatory:palette', palette.value); paletteNotice.hidden = true;} catch {paletteNotice.hidden = false;}
   });
-  applyPalette(); paletteLabel.append(palette); theme.group.append(paletteLabel, paletteNotice);
+  applyPalette(); paletteLabel.append(palette.root); theme.group.append(paletteLabel, paletteNotice);
   appearance.append(theme.root, themeNotice); controls.append(appearance);
   const tabs = el('nav', 'network-tabs'); tabs.setAttribute('aria-label', 'Network');
   const grid = el('div', 'network-grid');
@@ -321,7 +320,7 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
   root.replaceChildren(header, tabs, grid, footer, announcements);
   const states = new Map<Network, {model?: NetworkViewModel; tick(now: number): void; update(model: NetworkViewModel): void}>();
   let retainedLength:HistoryLength=500;try {retainedLength=historyLength(localStorage.getItem('observatory:path-length'));} catch { /* Storage is optional. */ }
-  const lengthControls:HTMLSelectElement[]=[],resizeHistories:((length:HistoryLength)=>void)[]=[];
+  const lengthControls:ReturnType<typeof nativeChoice>[]=[],resizeHistories:((length:HistoryLength)=>void)[]=[];
   for (const network of ['mainnet', 'shadownet'] as const) {
     const name = network === 'mainnet' ? 'Mainnet' : 'Shadownet';
     const tab = el('button', `network-tab ${network}`), tabName = el('span', '', name), tabStatus = el('span', 'tab-status', 'Connecting'); tab.append(tabName, tabStatus); tab.type = 'button';
@@ -455,9 +454,10 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
       button.setAttribute('aria-label',`Inspect observed alternatives for level ${anchor.level} round ${anchor.round}`);
       button.onclick=()=>showObservations({level:anchor.level,round:anchor.round});
     };
-    const historyLabel=el('label','path-history-length','History length'),historySelect=el('select');historySelect.setAttribute('aria-label','History length');
-    for(const length of historyLengths){const option=el('option','',String(length));option.value=String(length);historySelect.append(option);}historySelect.value=String(retainedLength);historyLabel.append(historySelect);lengthControls.push(historySelect);
-    historySelect.addEventListener('change',()=>{retainedLength=historyLength(historySelect.value);try {localStorage.setItem('observatory:path-length',String(retainedLength));} catch { /* The local choice still works without storage. */ }for(const control of lengthControls)control.value=String(retainedLength);for(const resize of resizeHistories)resize(retainedLength);});
+    const historyLabel=el('div','path-history-length','History length'),historySelect=nativeChoice('History length',historyLengths.map(length=>[String(length),String(length)] as const));
+    historySelect.value=String(retainedLength);historyLabel.append(historySelect.root);lengthControls.push(historySelect);
+    historySelect.root.addEventListener('toggle',()=>{if(!historySelect.root.open)return;const box=historySelect.root.getBoundingClientRect(),above=box.top,below=innerHeight-box.bottom,up=above>below;historySelect.group.style.top=up?'auto':'100%';historySelect.group.style.bottom=up?'100%':'auto';historySelect.group.style.maxHeight=`${Math.max(44,Math.min(320,(up?above:below)-8))}px`;});
+    historySelect.onChange(()=>{retainedLength=historyLength(historySelect.value);try {localStorage.setItem('observatory:path-length',String(retainedLength));} catch { /* The local choice still works without storage. */ }for(const control of lengthControls)control.value=String(retainedLength);for(const resize of resizeHistories)resize(retainedLength);});
     navigation.append(historyLabel,allObservations);resizeHistories.push(length=>{path.setLimit(length);layoutPath();});
     const naturalTabIndex=new WeakMap<HTMLElement,string|null>();
     let cameraFollowing=true,viewX=0,viewY=0,pathActive=false,localCamera:ObservedNavigatorView|undefined;

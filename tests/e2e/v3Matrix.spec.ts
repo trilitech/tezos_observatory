@@ -1,4 +1,4 @@
-import {attachFailureTrace} from './productionFixture';
+import {openDetails,attachFailureTrace} from './productionFixture';
 import {annotateV3} from './v3Verification';
 import {choose,inspectionModule,inspectRetainedCandidate,inspectRaw,selectNetwork} from './productionFixture';
 import {test,expect} from '@playwright/test';
@@ -100,11 +100,11 @@ test('V3 AC-10 both phases render exact below at and full thresholds independent
 
 test('V3 AC-36 native choice open checked hover focus and disabled surfaces cover every base',async({page},info)=>{
  test.setTimeout(240000);await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);
- const panel=page.locator('.network-panel.mainnet');await expect(page.locator('select:not(.palette-select):not([aria-label="History length"])')).toHaveCount(0);await expect(page.getByLabel('Colour palette')).toHaveCount(1);
+ const panel=page.locator('.network-panel.mainnet');await expect(page.locator('select')).toHaveCount(0);await expect(page.getByLabel('Colour palette')).toHaveCount(1);
  for(const name of ['Appearance','Committee sort','Committee phase receipt filter','Retained session instance','Comparison provider']){
   await captureMatrix(page,info,`native-choice-${name.toLowerCase().replaceAll(' ','-')}-open`,async()=>{
    const summary=name==='Appearance'?page.getByLabel(name):panel.getByLabel(name),root=summary.locator('..');
-   await summary.click();await expect(root).toHaveAttribute('open','');await root.locator('input:checked').focus();await expect(root.locator('input:checked')).toBeFocused();await root.locator('label').last().hover();
+   await summary.click();await expect(root).toHaveAttribute('open','');const checked=root.locator(':scope > .choice-options > .choice-option > input:checked');await checked.focus();await expect(checked).toBeFocused();await root.locator(':scope > .choice-options > .choice-option').last().hover();
   });
   await page.keyboard.press('Escape');
  }
@@ -172,4 +172,19 @@ test('V3 AC-01 applied tuple relationship and next-level observation remain qual
  await expect(panel.locator('.selected-relationship')).toContainText('already-applied');await expect(panel.locator('.pre .gauge-exact')).toHaveText('600 / 30,000');await captureMatrix(page,info,'already-applied-tuple-qualified-votes');
  const fork={...initial,hash:'SameTupleDifferentBlock100'};headers.get(page)?.set(fork.hash,fork);await send(page,'shadownet-proposals',{chain_id:'NetFixture',hash:fork.hash,header:fork});await inspectRetainedCandidate(panel,'SameTupleDifferentBlock100');await expect(panel.locator('.selected-relationship')).toContainText('selected block hash differs');await captureMatrix(page,info,'applied-tuple-different-known-block');
  const next={...head(101),hash:'NextObserved101'};next.fitness[3]=(0xffffffff-209).toString(16).padStart(8,'0');headers.get(page)?.set(next.hash,next);await send(page,'shadownet-proposals',{chain_id:'NetFixture',hash:next.hash,header:next});await panel.getByRole('button',{name:'Follow live',exact:true}).click();await expect(panel.locator('.selected-relationship')).toContainText('next level');await expect(panel.locator('.next-proposal-observation')).toContainText('Coherent next-level proposal observed');await captureMatrix(page,info,'coherent-next-level-proposal-observed');
+});
+
+
+test('V3 AC-36 palette and history radio choices expose selected hover and focus states at every base',async({page},info)=>{
+ test.setTimeout(180000);await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);await expect(page.locator('select')).toHaveCount(0);
+ for(const [state,name] of [['palette-choice-states','Colour palette'],['history-length-choice-states','History length']] as const){
+  await captureMatrix(page,info,state,async()=>{
+   const control=name==='Colour palette'?page.getByLabel(name,{exact:true}):page.locator('.mainnet').getByLabel(name,{exact:true});
+   for(const ancestor of await control.locator('..').locator('xpath=ancestor::details').all())await openDetails(ancestor);
+   if(await control.locator('..').getAttribute('open')===null)await control.click();
+   const group=control.locator('..').locator(':scope > .choice-options'),checked=group.locator(':scope > .choice-option > input:checked');await checked.focus();await expect(checked).toBeFocused();await group.locator(':scope > .choice-option').last().hover();
+  });
+  await page.keyboard.press('Escape');if(name==='Colour palette')await page.keyboard.press('Escape');
+ }
+ info.annotations.push({type:'v3-verified',description:'AC-36'});
 });

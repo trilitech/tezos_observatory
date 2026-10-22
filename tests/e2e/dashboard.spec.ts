@@ -1232,8 +1232,8 @@ for(const malformed of ['att','pre'] as const)test(`V3 AC-10 independently compl
 test('V3 AC-23 native disclosure radio groups support keyboard selection focus and stable data controls',async({page})=>{
  await prepare(page,false);await send(page,'mainnet-operations',[vote(0)]);
  const panel=page.locator('.network-panel.mainnet'),appearance=page.getByLabel('Appearance'),root=appearance.locator('..');
- await expect(page.locator('select:not(.palette-select):not([aria-label="History length"])')).toHaveCount(0);
- await expect(page.getByLabel('Colour palette',{exact:true})).toHaveValue('pollen');
+ await expect(page.locator('select')).toHaveCount(0);
+ await expect(page.getByLabel('Colour palette',{exact:true})).toHaveText('Graphite & pollen');
  await appearance.focus();await page.keyboard.press('Enter');await expect(root).toHaveAttribute('open','');
  await page.keyboard.press('Tab');await expect(root.locator('input[value="system"]')).toBeFocused();
  await page.keyboard.press('ArrowDown');await expect(root.locator('input[value="light"]')).toBeChecked();await expect(page.locator('html')).toHaveAttribute('data-theme','light');

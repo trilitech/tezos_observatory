@@ -1,6 +1,6 @@
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {sourceBindings,loadV3Evidence,combinedHashes,sha256} from '../../scripts/v3-evidence-contract.mjs';
 export function productionInventoryProbe(repository) {
@@ -25,9 +25,9 @@ const records={
 };
 for(const [name,value] of Object.entries(records)){const file=name+'.json';writeFileSync(join(bundle,file),JSON.stringify(value));manifest.artifacts[file]=sha256(readFileSync(join(bundle,file)));manifest.surfaceEvidence[name]=[file];}
 const load=()=>{writeFileSync(join(bundle,'manifest.json'),JSON.stringify(manifest));try{loadV3Evidence(bundle,repo);return {accepted:true};}catch(e){return {accepted:false,error:String(e)}}};
-const baseline=load();delete manifest.production['assets/imported.js'];manifest.productionCombined=combinedHashes(manifest.production);for(const [name,value] of Object.entries(records)){for(const record of value)record.productionCombined=manifest.productionCombined;const file=name+'.json';writeFileSync(join(bundle,file),JSON.stringify(value));manifest.artifacts[file]=sha256(readFileSync(join(bundle,file)));}const omitted=load();
+const baseline=load();mkdirSync(join(bundle,'matrix'));writeFileSync(join(bundle,'matrix/source.json'),JSON.stringify(binding));writeFileSync(join(bundle,'surface-evidence.json'),JSON.stringify(manifest.surfaceEvidence));execFileSync(process.execPath,[resolve(repository,'scripts/package-v3-evidence.mjs'),bundle],{cwd:repo,env:{...process.env,V3_EVIDENCE_AUTHOR:'explicit-author-fixture'},stdio:'pipe'});const packagedAuthor=JSON.parse(readFileSync(join(bundle,'manifest.json'),'utf8')).author;delete manifest.production['assets/imported.js'];manifest.productionCombined=combinedHashes(manifest.production);for(const [name,value] of Object.entries(records)){for(const record of value)record.productionCombined=manifest.productionCombined;const file=name+'.json';writeFileSync(join(bundle,file),JSON.stringify(value));manifest.artifacts[file]=sha256(readFileSync(join(bundle,file)));}const omitted=load();
 writeFileSync(join(repo,'dist/assets/imported.js'),'throw new Error("mutated unbound imported production asset");');const mutated=load();
 manifest.production['assets/extra.js']=sha256('absent');manifest.productionCombined=combinedHashes(manifest.production);const extra=load();
 rmSync(root,{recursive:true,force:true});
-return {baseline,omitted,mutated,extra};
+return {baseline,omitted,mutated,extra,packagedAuthor};
 }
