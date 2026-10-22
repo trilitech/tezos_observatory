@@ -632,8 +632,9 @@ it('captures raw operations once per publication while later emissions independe
  const now=vi.spyOn(performance,'now').mockReturnValue(1),raw=vi.spyOn(ObservationStore.prototype,'rawOperations');
  const {monitor,operations,heads,views}=setup();
  const batch=[{hash:'receipt',contents:[{kind:'preattestation' as const,level:101,round:0,slot:0,block_payload_hash:'P'}]}];
+ const firstOperation=batch[0];if(firstOperation===undefined)throw new Error('Fixture operation missing');
  raw.mockClear();operations.value(batch);expect(raw).toHaveBeenCalledTimes(2);expect(views.at(-1)?.rawOperations.map(value=>value.hash)).toEqual(['receipt']);
- const beforeHead=views.at(-1)?.rawOperations;heads.value(header(100));raw.mockClear();operations.value([{...batch[0]!,hash:'next-receipt'}]);expect(raw).toHaveBeenCalledTimes(2);
+ const beforeHead=views.at(-1)?.rawOperations;heads.value(header(100));raw.mockClear();operations.value([{...firstOperation,hash:'next-receipt'}]);expect(raw).toHaveBeenCalledTimes(2);
  expect(views.at(-1)?.rawOperations.map(value=>value.hash)).toEqual(['receipt','next-receipt']);expect(beforeHead?.map(value=>value.hash)).toEqual(['receipt']);expect(views.at(-1)?.snapshot?.operations.map(value=>value.hash)).toEqual(['receipt','next-receipt']);
  const published=views.at(-1)?.rawOperations;raw.mockClear();now.mockReturnValue(120002);operations.settings.onStatus(source,null,metrics);expect(raw).toHaveBeenCalledTimes(1);expect(views.at(-1)?.rawOperations).not.toBe(published);expect(views.at(-1)?.rawOperations.map(value=>value.hash)).toEqual(['receipt','next-receipt']);
  monitor.stop();raw.mockRestore();now.mockRestore();
