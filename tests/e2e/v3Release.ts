@@ -15,7 +15,7 @@ test('V3 AC-08 independent release prerequisites bind exact production source',a
  await actualProduct(page);const bundle=load();receipt(bundle,'AC-08','reviewer','semantic');receipt(bundle,'AC-08','qa','deterministic');receipt(bundle,'AC-08','reviewer','visual');
 });
 test('V3 AC-24 foundation interfaces and independent semantic receipts remain source bound',async({page})=>{
- await actualProduct(page);const foundation=readFileSync('specs/observatory-foundations.md');expect(createHash('sha256').update(foundation).digest('hex')).toBe('851b2b63b9d75554825a8429fcd6405882d9d28703350dc55113e2130907a7fa');expect(createHash('sha256').update(readFileSync('specs/observatory-v3.md')).digest('hex')).toBe('928e1b5a669fef3a8bf513a4c8056766cf8bbacfd266207bf757b14a2417ad7c');const bundle=load();receipt(bundle,'AC-24','reviewer','semantic');receipt(bundle,'AC-24','qa','deterministic');
+ await actualProduct(page);const foundation=readFileSync('specs/observatory-foundations.md');expect(createHash('sha256').update(foundation).digest('hex')).toBe('851b2b63b9d75554825a8429fcd6405882d9d28703350dc55113e2130907a7fa');expect(createHash('sha256').update(readFileSync('specs/observatory-v3.md')).digest('hex')).toBe('36e802b2ac81224d792e519406ab8e50d60cad05eba11796d973387f9014a40b');const bundle=load();receipt(bundle,'AC-24','reviewer','semantic');receipt(bundle,'AC-24','qa','deterministic');
 });
 test('V3 AC-25 complete production variant manifest rejects incomplete evidence',async({page})=>{
  await actualProduct(page);const bundle=load();expect(bundle.manifest.namespace).toBe('observatory-v3');

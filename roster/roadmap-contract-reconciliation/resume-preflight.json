@@ -1,0 +1,31 @@
+{
+  "revision": {
+    "exit": 0,
+    "stdout": "11153141958c56808c3a9b5b31f21de6fe268322\n",
+    "stderr": ""
+  },
+  "claims_check": {
+    "exit": 0,
+    "stdout": "{\n  \"expected_digest\": \"050df4d86fc51e3551f09ecd2b698f505c70db869bb425f9d897e21fe1e1f2d8\",\n  \"fresh\": true,\n  \"projections\": [\n    {\n      \"file\": \"kb/index.md\",\n      \"status\": \"fresh\"\n    },\n    {\n      \"file\": \"kb/properties.md\",\n      \"status\": \"fresh\"\n    },\n    {\n      \"file\": \"kb/spec.md\",\n      \"status\": \"fresh\"\n    }\n  ],\n  \"status\": \"fresh\"\n}\n",
+    "stderr": ""
+  },
+  "intake_pre_hook": {
+    "exit": 4,
+    "stdout": "{\n  \"skill\": \"roster-intake\",\n  \"event\": \"pre\",\n  \"outcome\": \"skip\",\n  \"steps_run\": 0,\n  \"pending_llm_steps\": [],\n  \"abort_reason\": null,\n  \"warn_reasons\": [],\n  \"skip_reason\": \"hook file not found: /var/tmp/observatory-roadmap-closure/.harness/hooks/skills/roster-intake/pre.md\",\n  \"log\": []\n}\n",
+    "stderr": ""
+  },
+  "neutral_manifest": {
+    "exit": 0,
+    "stdout": "{\n  \"digests\": {\n    \"questions\": \"0421f09011e208e118869eea6aebfd452b430f5c024fd578cf930e104517c535\"\n  },\n  \"questions\": [\n    \"Where are the current animation timing values defined, and how do they propagate into rendered behavior?\",\n    \"How are retention limits defined and applied across the existing navigator and detailed views?\",\n    \"How does the current evidence workflow preserve failed results and bind claims to their source, build, and hash?\",\n    \"[ecosystem] How do existing browser tools measure rendered-animation timing and associate measurements with the tested source and build?\"\n  ],\n  \"technical_ids\": []\n}\n",
+    "stderr": ""
+  },
+  "source_sanity": {
+    "camera_constant": [
+      "export const CAMERA_DURATION_MS=1200;"
+    ],
+    "readme_compact": [
+      "History length retains 25, 50, 100, 250, 500 (default), 1000, or unlimited compact observed proposal records from this browser session, including competing hashes and qualified payload-only observations. Finite limits count all records, not levels; unlimited grows browser memory. The shared preference survives reload, while observations accumulate locally without historical backfill. Observed alternatives can be inspected in a paginated local list; they are not claims of canonical-chain inclusion or on-chain uncles. Observed cards keep their own pre/att peak backgrounds; unknown phases stay unknown, and future cards remain transparent. Drag or use the camera arrows to explore left and down in any order, then Return to live. Camera browsing leaves collection running and makes no history RPC requests."
+    ]
+  },
+  "research_status": "not complete: fresh fork-none spawn rejected agent thread limit; prior old-root research rejected"
+}

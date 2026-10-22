@@ -1,0 +1,11 @@
+{
+  "skill": "roster-question",
+  "event": "post",
+  "outcome": "skip",
+  "steps_run": 0,
+  "pending_llm_steps": [],
+  "abort_reason": null,
+  "warn_reasons": [],
+  "skip_reason": "hook file not found: /var/tmp/observatory-roadmap-closure/.harness/hooks/skills/roster-question/post.md",
+  "log": []
+}

@@ -1,0 +1,56 @@
+{
+  "task": "roadmap-contract-reconciliation",
+  "mode": "full",
+  "schema_version": "1.0",
+  "steps": [
+    {
+      "id": "step-1",
+      "skill": "roster-implement",
+      "inputs": [
+        "briefs/roadmap-contract-reconciliation-implementer.md"
+      ],
+      "outputs": [
+        "briefs/roadmap-contract-reconciliation-impl.md"
+      ],
+      "hook": false
+    },
+    {
+      "id": "step-2",
+      "skill": "roster-review",
+      "inputs": [
+        "briefs/roadmap-contract-reconciliation-reviewer.md"
+      ],
+      "outputs": [
+        "briefs/roadmap-contract-reconciliation-review.json"
+      ],
+      "hook": false
+    },
+    {
+      "id": "step-3",
+      "skill": "roster-qa",
+      "inputs": [
+        "briefs/roadmap-contract-reconciliation-qa-scope.md"
+      ],
+      "outputs": [
+        "briefs/roadmap-contract-reconciliation-qa.md"
+      ],
+      "hook": false
+    },
+    {
+      "id": "step-4",
+      "skill": "roster-ship",
+      "inputs": [
+        "briefs/roadmap-contract-reconciliation-qa.md"
+      ],
+      "outputs": [
+        "briefs/roadmap-contract-reconciliation-ship.md"
+      ],
+      "hook": false
+    }
+  ],
+  "quality_gates": {
+    "build": "rtk npm run build",
+    "test": "rtk npm test",
+    "lint": ""
+  }
+}

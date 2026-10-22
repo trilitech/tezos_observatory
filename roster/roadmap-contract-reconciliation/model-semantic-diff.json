@@ -1,0 +1,30 @@
+{
+  "claims": 393,
+  "identity_edges_lifecycles_preserved": true,
+  "ignored_physical_metadata": [
+    "source_line"
+  ],
+  "changed_statements": [
+    {
+      "qualified_id": "observatory-v3/FR-012",
+      "before": "When an eligible adjacent progress transition animates, the observatory MUST use a default duration of 160ms and a maximum duration of 200ms. Scenario trace: [US-2-S1; US-2-S4].",
+      "after": "When an eligible adjacent observed progress transition animates, the observatory MUST move the chain scene through a full1200ms rendered journey at constant speed, measured from the start of that rendered transition; this supersedes the earlier160ms default/200ms receipt-to-settlement policy. Scenario trace: [US-2-S1; US-2-S4]."
+    },
+    {
+      "qualified_id": "observatory-v3/FR-013",
+      "before": "When further updates arrive before a transition finishes, the observatory MUST coalesce to the latest eligible accepted destination with at most one transition in flight, no reenactment queue, and settlement within 200ms after the final accepted update; a burst ending at the next level uses one RIGHT transition. Scenario trace: [US-2-S4].",
+      "after": "When further coherent destinations arrive before a transition finishes, the observatory MUST coalesce to the latest eligible accepted destination with at most one coordinated scene transition in flight and no reenactment queue; a newly rendered destination receives its full1200ms journey from rendering, and a burst ending at the next level uses RIGHT progression. Gap, reorg, reduced-motion, pin and source/context changes retain their existing static/cancellation fences. This obligation makes no200ms receipt-to-settlement promise. Scenario trace: [US-2-S4]."
+    },
+    {
+      "qualified_id": "observatory-v3/AC-02",
+      "before": "Given Follow live at 5489252/r0, when coherent adjacent r1 then next 5489253/r0 are accepted, actual camera destinations move UP then RIGHT with upper/right conditional targets and proven relationship labels; finite motion defaults 160ms and never exceeds 200ms. Given valid observed r0 while clock predicts r6\u21927, r1 expires and duplicate/power updates arrive, observed anchor, camera and history stay r0 with no invented observed rounds 1\u20136. Incoming accepted progress preserves keyboard focus and document scroll even in Follow live. Covers: [FR-009; FR-010; FR-011; FR-012; FR-017; FR-066].",
+      "after": "Given Follow live at 5489252/r0, when coherent adjacent r1 then next 5489253/r0 are accepted, actual camera destinations move UP then RIGHT with upper/right conditional targets and proven relationship labels; the actual chain scene travels for1200ms at constant speed from rendered start. Given valid observed r0 while clock predicts r6\u21927, r1 expires and duplicate/power updates arrive, observed anchor, camera and history stay r0 with no invented observed rounds 1\u20136. Incoming accepted progress preserves keyboard focus and document scroll even in Follow live. Covers: [FR-009; FR-010; FR-011; FR-012; FR-017; FR-066]."
+    },
+    {
+      "qualified_id": "observatory-v3/AC-13",
+      "before": "Given adjacent arrivals before transition completion ending next level, at most one RIGHT final transition settles within 200ms of final acceptance with 160ms default; final gap/reorg or newly enabled reduced motion cancels and snaps with status, without queued reenactment. A source switch or same-coordinate candidate replacement also recenters statically with explicit identity/status rather than progression. Covers: [FR-012; FR-013; FR-014; FR-015; FR-064].",
+      "after": "Given adjacent arrivals before transition completion ending next level, at most one coordinated scene transition is in flight, the newest eligible rendered destination receives its full1200ms constant-speed journey from rendering, a burst ending at the next level uses RIGHT progression, and there is no reenactment queue or200ms receipt-to-settlement promise; final gap/reorg or newly enabled reduced motion cancels and snaps with status, without queued reenactment. A source switch or same-coordinate candidate replacement also recenters statically with explicit identity/status rather than progression. Covers: [FR-012; FR-013; FR-014; FR-015; FR-064]."
+    }
+  ],
+  "unchanged_statement_count": 389
+}

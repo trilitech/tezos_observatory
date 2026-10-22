@@ -1,0 +1,22 @@
+{
+  "command": [
+    "node",
+    "/home/mathias/dev/agent-roster/dist/scripts/run-hook.js",
+    "post",
+    "roster-research"
+  ],
+  "cwd": "/home/mathias/dev/tezos_observatory",
+  "exitCode": 4,
+  "stdout": {
+    "skill": "roster-research",
+    "event": "post",
+    "outcome": "skip",
+    "steps_run": 0,
+    "pending_llm_steps": [],
+    "abort_reason": null,
+    "warn_reasons": [],
+    "skip_reason": "hook file not found: /home/mathias/dev/tezos_observatory/.harness/hooks/skills/roster-research/post.md",
+    "log": []
+  },
+  "stderr": ""
+}

@@ -1,0 +1,24 @@
+{
+  "base_revision": "11153141958c56808c3a9b5b31f21de6fe268322",
+  "before_sha256": {
+    "specs/observatory-block-intervals.md": "7a2659d6b9e64f77f340e729ca147df0f5008f47e25627e632aed66bc00101e7",
+    "specs/observatory-foundations.md": "851b2b63b9d75554825a8429fcd6405882d9d28703350dc55113e2130907a7fa",
+    "specs/observatory-v3.md": "928e1b5a669fef3a8bf513a4c8056766cf8bbacfd266207bf757b14a2417ad7c",
+    "briefs/observatory-v3-pragmatic-timing-disposition.md": "700b5b269cf4393d52c0568e1ada2c7c68f8d01be9f0c49f86ef8206b4f76c92"
+  },
+  "after_sha256": {
+    "specs/observatory-block-intervals.md": "7a2659d6b9e64f77f340e729ca147df0f5008f47e25627e632aed66bc00101e7",
+    "specs/observatory-foundations.md": "851b2b63b9d75554825a8429fcd6405882d9d28703350dc55113e2130907a7fa",
+    "specs/observatory-v3.md": "36e802b2ac81224d792e519406ab8e50d60cad05eba11796d973387f9014a40b",
+    "briefs/observatory-v3-pragmatic-timing-disposition.md": "700b5b269cf4393d52c0568e1ada2c7c68f8d01be9f0c49f86ef8206b4f76c92"
+  },
+  "historical_artifacts_preserved": 290,
+  "changed_managed_statements": [
+    "observatory-v3/FR-012",
+    "observatory-v3/FR-013",
+    "observatory-v3/AC-02",
+    "observatory-v3/AC-13"
+  ],
+  "source_product_changes": false,
+  "acceptance_scope": "Document amendment and focused behavior only; fresh exact integrated-source visual/native/manual AC24/CHECK38 remain required."
+}

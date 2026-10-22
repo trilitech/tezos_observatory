@@ -1,0 +1,15 @@
+{
+  "exit": 4,
+  "stdout": {
+    "skill": "roster-research",
+    "event": "post",
+    "outcome": "skip",
+    "steps_run": 0,
+    "pending_llm_steps": [],
+    "abort_reason": null,
+    "warn_reasons": [],
+    "skip_reason": "hook file not found: /var/tmp/observatory-roadmap-closure/.harness/hooks/skills/roster-research/post.md",
+    "log": []
+  },
+  "stderr": ""
+}
