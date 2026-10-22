@@ -5,7 +5,7 @@ export interface StreamTransportOptions<T> {
   readonly sources: readonly RpcSource[];
   readonly path: string;
   readonly parse: (value: unknown) => T;
-  readonly onValue: (value: T, source: RpcSource, latencyMs: number) => void;
+  readonly onValue: (value: T, source: RpcSource, latencyMs: number, metrics?:TransportMetrics) => void;
   readonly onStatus: (
     source: RpcSource | null,
     error: string | null,
@@ -117,7 +117,7 @@ export class StreamTransport<T> {
             messages: this.metrics.messages + 1,
             lastLatencyMs: latency,
           };
-          this.options.onValue(value, source, latency);
+          this.options.onValue(value, source, latency, this.metrics);
           this.options.onStatus(source, null, this.metrics);
         }
       }
