@@ -15,6 +15,11 @@
       "requirement": "root coordinator under delegated project authority (2026-10-15); complete spec read and actual 17-challenge resolutions, explicit validation",
       "acceptance-criterion": "root coordinator under delegated project authority (2026-10-15); complete spec read and actual 17-challenge resolutions, explicit validation",
       "check": "root coordinator under delegated project authority (2026-10-15); complete spec read and actual 17-challenge resolutions, explicit validation"
+    },
+    "baker-tracking": {
+      "requirement": "root coordinator delegated authority; actual independent spec challenge Q1\u2013Q5 resolved and explicit validation 2026-10-23",
+      "acceptance-criterion": "root coordinator delegated authority; actual independent spec challenge Q1\u2013Q5 resolved and explicit validation 2026-10-23",
+      "check": "root coordinator delegated authority; actual independent spec challenge Q1\u2013Q5 resolved and explicit validation 2026-10-23"
     }
   }
 }

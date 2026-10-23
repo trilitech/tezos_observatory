@@ -12,14 +12,14 @@ const array=(value,label)=>{if(!Array.isArray(value))throw new Error(`Missing ${
 const readJSON=path=>JSON.parse(readFileSync(path,'utf8'));
 
 /** Classify every actual result before selecting RED; any execution error wins. */
-export function classifyUnits(report,status,expected,runtimeLog=''){
+export function classifyUnits(report,status,expected,runtimeLog='',assertionField='blockIntervalAssertions'){
  object(report,'Vitest report');const cases=array(report.testResults,'unit suites').flatMap(suite=>array(suite.assertionResults,'unit cases'));
  if(/Vitest caught \d+ unhandled error|Unhandled Rejection|Unhandled Exception|PromiseRejectionHandledWarning/.test(clean(runtimeLog)))throw new Error('Unhandled unit runtime failure');
  if(cases.length!==expected.length||new Set(cases.map(test=>test.fullName)).size!==expected.length||expected.some(name=>!cases.some(test=>test.fullName===name)))throw new Error('Incomplete unit execution inventory');
  if(report.numPendingTests||report.numTodoTests||report.numTotalTests!==cases.length)throw new Error('Skipped/incomplete unit execution');
  let assertions=0;const failures=[],errors=[];
  for(const test of cases){
-  const count=test.meta?.blockIntervalAssertions;if(!Number.isInteger(count)||count<1){errors.push(`Zero/missing executed assertions: ${test.fullName}`);continue;}assertions+=count;
+  const count=test.meta?.[assertionField];if(!Number.isInteger(count)||count<1){errors.push(`Zero/missing executed assertions: ${test.fullName}`);continue;}assertions+=count;
   const messages=array(test.failureMessages,'unit failure messages');
   if(test.status==='passed'){if(messages.length)errors.push('Passed unit contains errors');continue;}
   if(test.status!=='failed'||!messages.length){errors.push(`Incomplete unit result: ${test.status}`);continue;}

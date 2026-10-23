@@ -184,7 +184,7 @@ function recentConsensus() {
 
 let choiceSequence=0;
 /** Native disclosure + radios: browser/OS popup colors are not author-controllable. */
-function nativeChoice(name:string,initial:readonly (readonly [string,string])[]=[]) {
+export function nativeChoice(name:string,initial:readonly (readonly [string,string])[]=[]) {
  const root=el('details','native-choice'),summary=el('summary'),group=el('fieldset','choice-options'),legend=el('legend','sr-only',name);
  summary.setAttribute('aria-label',name);group.tabIndex=-1;group.append(legend);root.append(summary,group);const groupName=`observatory-choice-${++choiceSequence}`;
  const entries=new Map<string,{label:HTMLLabelElement;input:HTMLInputElement;text:HTMLSpanElement}>();let selected='';
@@ -290,7 +290,9 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
   const pause = el('button', 'control-button', 'Pause'), reconnect = el('button', 'control-button', 'Reconnect'); pause.type = reconnect.type = 'button';
   let paused = false;
   pause.addEventListener('click', () => {paused = !paused; set(pause, paused ? 'Resume' : 'Pause'); pause.setAttribute('aria-pressed', String(paused)); options.onPauseChange?.(paused);});
-  reconnect.addEventListener('click', () => options.onReconnect?.()); controls.append(live, pause, reconnect); header.append(brand, controls);
+  reconnect.addEventListener('click', () => options.onReconnect?.());
+  const bakerLink=el('a','control-button','Baker & DAL');bakerLink.href='./baker.html?view=dal&network=mainnet';
+  controls.append(live, pause, reconnect,bakerLink); header.append(brand, controls);
   const appearance = el('div', 'appearance');
   appearance.append(el('span', 'eyebrow', 'Appearance'));
   const theme = nativeChoice('Appearance',[['system','System'],['light','Light'],['dark','Dark']]);

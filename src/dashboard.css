@@ -69,6 +69,9 @@ h1,h2,h3,h4,p{margin:0}h1{font-size:22px;letter-spacing:-.045em;line-height:1.15
 .masthead,.header-brand,.header-controls,.panel-header,.connection-line,.section-heading{display:flex;align-items:center;gap:12px}
 .masthead{justify-content:space-between;padding-bottom:18px}.header-brand{flex:none}.header-mark{width:42px;height:42px}.header-brand-text{min-width:0}
 .header-controls{justify-content:flex-end;flex-wrap:wrap}.live-label{font-size:12px;color:var(--muted)}.live-dot{display:none}
+.header-controls>a.control-button{display:inline-flex;align-items:center;min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:3px;color:var(--ink);background:var(--surface);text-decoration:none}
+.header-controls>a.control-button:hover{background:var(--selected)}
+.header-controls>a.control-button:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
 .eyebrow{font-size:12px;color:var(--muted);font-weight:650;letter-spacing:.07em;text-transform:uppercase}.appearance{display:flex;gap:8px;align-items:center;position:relative}.theme-notice{font-size:12px;color:var(--muted);max-width:130px}
 .network-tabs{display:flex;gap:0;border-block:1px solid var(--line);margin-bottom:16px;background:var(--surface)}
 .network-tab{display:flex;align-items:center;gap:16px;border:0;border-right:1px solid var(--line);border-radius:0;min-width:240px;padding:12px 18px;font-weight:650}

@@ -4,7 +4,7 @@ status: derived
 schema-version: 2
 ---
 
-<!-- claims-projection {"freshness_digest":"867e21eec5efcfeb9ee3360139733f44174cf1f4f99a46d2ba48a78da05b5eb1","model_digest":"71362681320549efd2fb76d4fd88a53d34b025bfe0ba4bd82468e3b680d67abe","renderer_version":"1.2","selection_policy_version":"1.2"} -->
+<!-- claims-projection {"freshness_digest":"c27a911455cbda904022206e00e430c50cbae8f1dc39468e969a07821a79b55f","model_digest":"5472388ba7016ad8e4968a359d11aad17b55d7719f6a21542d53c7aff9af00bd","renderer_version":"1.2","selection_policy_version":"1.2"} -->
 
 
 ## Invariants
@@ -12,6 +12,18 @@ schema-version: 2
 
 ## Runnable Checks
 
+- **baker-tracking/CHECK-1** [active; absent]: `node scripts/check-baker-tracking.mjs 1` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-10** [active; absent]: `node scripts/check-baker-tracking.mjs 10` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-11** [active; absent]: `node scripts/check-baker-tracking.mjs 11` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-12** [active; absent]: `node scripts/check-baker-tracking.mjs 12` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-2** [active; absent]: `node scripts/check-baker-tracking.mjs 2` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-3** [active; absent]: `node scripts/check-baker-tracking.mjs 3` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-4** [active; absent]: `node scripts/check-baker-tracking.mjs 4` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-5** [active; absent]: `node scripts/check-baker-tracking.mjs 5` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-6** [active; absent]: (authentic-success-path, fail-closed-path) `node scripts/check-baker-tracking.mjs 6` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-7** [active; absent]: `node scripts/check-baker-tracking.mjs 7` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-8** [active; absent]: `node scripts/check-baker-tracking.mjs 8` → pass0, assertion1, execution/missing-evidence error2.
+- **baker-tracking/CHECK-9** [active; absent]: `node scripts/check-baker-tracking.mjs 9` → pass0, assertion1, execution/missing-evidence error2.
 - **observatory-block-intervals/CHECK-1** [active; absent]: `rtk proxy node --input-type=module -e 'try { const m = await import("./scripts/check-observatory-block-intervals.mjs"); if (typeof m.run !== "function") throw new Error("runner export missing"); const r = await m.run(process.argv.slice(1)); if (!r || !Number.isInteger(r.assertions) || r.assertions < 1 || ![0,1].includes(r.code)) throw new Error("missing assertions or invalid result"); process.exitCode = r.code; } catch (error) { console.error(error); process.exitCode = 2; }' AC-1 --browsers chromium,firefox` → 0 only all AC-1 assertions executed/passed; 1 actual behavioral assertion; >=2 execution/incomplete evidence error. **Planned; not executed.**
 - **observatory-block-intervals/CHECK-10** [active; absent]: `rtk proxy node --input-type=module -e 'try { const m = await import("./scripts/check-observatory-block-intervals.mjs"); if (typeof m.run !== "function") throw new Error("runner export missing"); const r = await m.run(process.argv.slice(1)); if (!r || !Number.isInteger(r.assertions) || r.assertions < 1 || ![0,1].includes(r.code)) throw new Error("missing assertions or invalid result"); process.exitCode = r.code; } catch (error) { console.error(error); process.exitCode = 2; }' AC-10 --browsers chromium,firefox` → 0 only all AC-10 assertions executed/passed; 1 actual behavioral assertion; >=2 execution/incomplete evidence error. **Planned; not executed.**
 - **observatory-block-intervals/CHECK-11** [active; absent]: `rtk proxy node --input-type=module -e 'try { const m = await import("./scripts/check-observatory-block-intervals.mjs"); if (typeof m.run !== "function") throw new Error("runner export missing"); const r = await m.run(process.argv.slice(1)); if (!r || !Number.isInteger(r.assertions) || r.assertions < 1 || ![0,1].includes(r.code)) throw new Error("missing assertions or invalid result"); process.exitCode = r.code; } catch (error) { console.error(error); process.exitCode = 2; }' AC-11 --browsers chromium,firefox` → 0 only all AC-11 assertions executed/passed; 1 actual behavioral assertion; >=2 execution/incomplete evidence error. **Planned; not executed.**

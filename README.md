@@ -7,6 +7,15 @@ delegates not observed by the selected RPC source.
 This is a static TypeScript application. RPC connections run only while a viewer
 has the page visible. It needs no background collector or systemd service.
 
+Open **Baker & DAL** for the standalone `baker.html` page. Share a baker with
+`baker.html?network=mainnet&baker=<tz-address>`, or use
+`baker.html?network=mainnet&view=dal` for network-wide applied publications and
+raw, hash-pinned DAL observations. The page refreshes bounded indexed windows
+while visible, retains source timestamps for cached profile/rewards, and reads
+included block details on demand. Raw DAL bitsets do not establish per-slot
+success or failure; exact missed-slot diagnosis and live mempool comparison are
+outside this first view.
+
 ## Develop and verify
 
 Use Node.js 22 or newer, then:
