@@ -1,0 +1,54 @@
+{
+  "task": "baker-tracking",
+  "mode": "full",
+  "schema_version": "1.0",
+  "steps": [
+    {
+      "id": "step-1",
+      "skill": "roster-implement",
+      "inputs": [
+        "briefs/baker-tracking-implementer.md",
+        "specs/baker-tracking.md"
+      ],
+      "outputs": [
+        "src/baker.html",
+        "src/baker.ts",
+        "src/view/bakerView.ts",
+        "src/rpc/bakerTracking.ts",
+        "src/bakerEvidence.ts",
+        "tests/unit/bakerTracking.test.ts",
+        "tests/e2e/bakerTracking.spec.ts"
+      ],
+      "hook": false
+    },
+    {
+      "id": "step-2",
+      "skill": "roster-review",
+      "inputs": [
+        "briefs/baker-tracking-reviewer.md"
+      ],
+      "outputs": [
+        "briefs/baker-tracking-review.md"
+      ],
+      "hook": false
+    },
+    {
+      "id": "step-3",
+      "skill": "roster-qa",
+      "inputs": [
+        "briefs/baker-tracking-qa-scope.md",
+        "briefs/baker-tracking-review.md"
+      ],
+      "outputs": [
+        "briefs/baker-tracking-qa.md"
+      ],
+      "hook": false
+    }
+  ],
+  "quality_gates": {
+    "build": "rtk npm run build",
+    "test": "rtk npm test && rtk npm run test:e2e",
+    "lint": "",
+    "typecheck": "rtk npm run check"
+  }
+}
