@@ -17,7 +17,7 @@ export function includedDal(v:unknown,baker:string,protocol:string):DalBits[]{
  for(const op of v){if(!record(op)||!Array.isArray(op.contents))throw Error('Malformed operation');for(const c of op.contents){if(!record(c))throw Error('Malformed content');if(c.kind==='attestation_with_dal'&&record(c.metadata)&&c.metadata.delegate===baker){if(typeof c.dal_attestation!=='string'||!/^\d+$/.test(c.dal_attestation))throw Error('Malformed DAL bits');out.push({kind:'individual',bits:c.dal_attestation});}
  if(c.kind==='attestations_aggregate'){
  // Index alignment is verified for the U025 PsUshuai protocol family only.
- if(protocol!==PRODUCER_PROTOCOL)continue;
+ if(protocol!==PRODUCER_PROTOCOL)throw Error('Aggregate DAL attribution unavailable for unsupported protocol');
  if(!Array.isArray(c.committee)||!record(c.metadata)||!Array.isArray(c.metadata.committee)||c.committee.length!==c.metadata.committee.length)throw Error('Aggregate committee mismatch');
  const seen=new Set<string>();const matched:DalBits[]=[];for(let i=0;i<c.committee.length;i++){const item:unknown=c.committee[i],meta:unknown=c.metadata.committee[i];if(!record(item)||!record(meta)||typeof meta.delegate!=='string'||seen.has(meta.delegate))throw Error('Malformed or duplicate aggregate delegate');seen.add(meta.delegate);if(item.dal_attestation!==undefined&&(typeof item.dal_attestation!=='string'||!/^\d+$/.test(item.dal_attestation)))throw Error('Malformed aggregate DAL bits');if(meta.delegate===baker&&typeof item.dal_attestation==='string')matched.push({kind:'aggregate',bits:item.dal_attestation});}out.push(...matched);
  }
