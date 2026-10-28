@@ -8,6 +8,7 @@ import {captureOpportunityFacts} from "../consensus/opportunityFacts";
 import type {Constants,DelegateRight,TargetContext,RpcContext,PendingSnapshot} from "../rpc/networkData";
 import type {ReconciliationTarget} from "./observerReconciliation";
 import {headFactsKey} from "./headGeneration";
+import {CHAIN_IDS,isCustomSource} from "../rpc/customSources";
 
 export interface ContextAdmission<T> {
   readonly head:BlockHeader;
@@ -114,6 +115,8 @@ export class ObservationStore<T> {
   private readonly contexts=new Map<string,Map<number,ContextAdmission<T>>>();
   private readonly heads=new Map<string,BlockHeader>();
   private readonly configured:Set<string>;
+  /** Viewer-supplied sources: trusted for this network only on its known chain. */
+  private readonly custom:Set<string>;
   private readonly observerGenerations=new Map<string,number>();
   private collectionGeneration=0;
   private enabled=true;
@@ -130,20 +133,23 @@ export class ObservationStore<T> {
   private liveIdentity:string|undefined;
   private readonly selectableUnits=new Map<string,number>();
 
-  constructor(readonly network:NetworkName,sources:readonly RpcSource[]){this.configured=new Set(sources.filter(source=>source.network===network).map(source=>source.baseUrl));}
+  constructor(readonly network:NetworkName,sources:readonly RpcSource[]){const own=sources.filter(source=>source.network===network);this.configured=new Set(own.map(source=>source.baseUrl));this.custom=new Set(own.filter(isCustomSource).map(source=>source.baseUrl));}
+  /** A custom source never establishes, nor is authorized under, an identity other than the network's chain. */
+  private chainAllowed(source:RpcSource,chainId:string):boolean {return !this.custom.has(source.baseUrl) || chainId===CHAIN_IDS[this.network];}
   private allowed(source:RpcSource|undefined):source is RpcSource {return source!==undefined && source.network===this.network && this.configured.has(source.baseUrl);}
 
   networkIdentity():RpcContext|undefined {return this.expectedNetwork;}
   establishNetworkIdentity(context:RpcContext):boolean {
     if(!this.allowed(context.source) || !context.chainId || context.header.chainId!==context.chainId || context.evidence.chainId!==context.chainId || context.evidence.requestedHeadHash!==context.header.hash || context.evidence.source.baseUrl!==context.source.baseUrl)throw new Error("Unproven expected network identity");
-    if(this.expectedNetwork)return this.expectedNetwork.chainId===context.chainId;
+    if(this.expectedNetwork)return this.expectedNetwork.chainId===context.chainId && this.chainAllowed(context.source,context.chainId);
+    if(!this.chainAllowed(context.source,context.chainId))return false;
     this.expectedNetwork=context;
     for(const source of this.contexts.keys()){const proof=this.contexts.get(source)?.values().next().value;if(proof)this.recheck(proof.context.observer.source);}
     return true;
   }
   contextAuthorized(context:TargetContext):boolean {
     const proof=this.contexts.get(context.observer.source.baseUrl)?.get(context.level);
-    return this.expectedNetwork?.chainId===context.observer.chainId && proof!==undefined && contextFacts(proof.context)===contextFacts(context);
+    return this.expectedNetwork?.chainId===context.observer.chainId && this.chainAllowed(context.observer.source,context.observer.chainId) && proof!==undefined && contextFacts(proof.context)===contextFacts(context);
   }
 
   start():void {this.enabled=true;}
@@ -303,7 +309,7 @@ export class ObservationStore<T> {
   private tryAdmission(record:ObservationTarget<T>,snapshot?:PendingCoverage):boolean {
     const admission=this.contexts.get(record.target.source.baseUrl)?.get(record.target.level);
     const candidate=record.target.candidate;
-    if(admission && this.expectedNetwork?.chainId!==admission.context.observer.chainId){
+    if(admission && (this.expectedNetwork?.chainId!==admission.context.observer.chainId || !this.chainAllowed(admission.context.observer.source,admission.context.observer.chainId))){
       const updated=Object.freeze({...record,sourceContext:admission,error:this.expectedNetwork?"Source chain contradicts expected network identity":"Expected network identity unavailable",contextInvalid:record.admission!==undefined || this.expectedNetwork!==undefined});
       const product=record.admission?(candidate?this.acceptedCandidates:this.instances):this.unresolved;
       product.set(record.identity,updated);return false;

@@ -1,7 +1,7 @@
 ---
 status: historical
 schema-version: 2
-last-updated: 2026-10-14
+last-updated: 2026-10-28
 ---
 
 # Unresolved baseline risks
@@ -18,6 +18,10 @@ This onboarding record separates reproduced observations from hypotheses. It doe
 | Pin/follow-live inspector absent | Baseline feature gap in main/view selection | Stable history selection, independent collection pause, newer-items count |
 | Mobile masthead overlaps at 390px | Reported rendered baseline observation despite horizontal-overflow tests passing; `src/dashboard.css` masthead/control constraints | Rendered geometry checks, long text and keyboard/touch in both themes |
 | Auxiliary work/eligibility/event provenance | Audit candidates in `networkData.ts`, `main.ts`, `dashboardView.ts` | Cancellation, context/age labels and exact event identity tests |
+
+## Viewer-supplied (link-supplied) RPC sources
+
+A `?rpc=` or `?rpc_shadownet=` link, or a URL saved from a source panel, makes a node chosen by whoever wrote the link the first source for RPC reads and monitor streams. That node is untrusted: it can report another chain, withhold or delay data, answer slowly or with very large bodies, and learn the viewer's IP address, origin and request timing (requests omit credentials). Mitigations in place: no custom source by default; at most four per network and URLs up to 2048 characters; an origin label in the source pane plus a notice beside the network header ("Using a custom RPC source … from this link · Review"); chain-id gating in `ObservationStore` so a custom source never fixes or joins another chain's identity; exclusion from reads and streams after a startup probe finds another chain, non-JSON or an oversized body; a 60 s idle deadline on custom streams; capped response bodies; node-controlled text truncated and stripped of control and bidi characters. Residual: a custom node on the right chain can still withhold operations or serve a stale head (source-limited observation already applies), the startup probe and first stream requests contact the linked host before the viewer reviews it, a private-network host can be probed from the viewer's browser, and `SourceComparison` (`src/rpc/sourceComparison.ts`) still reads response bodies without a byte cap. No consent step is required before a link-supplied source is used.
 
 Public RPC CORS, buffering and stream gaps can prevent observations. One bounded Shadownet request succeeded; Mainnet verification requests returned 403 in the audit environment. This does not certify other origins or provider completeness. The suspected missing `/header` hash defect was disproved by documentation and configured Shadownet response; do not introduce a bootstrap fix for it.
 
