@@ -6,7 +6,8 @@ import {observationMeaning} from './observationMeaning';
 import {CandidateProducers} from './rpc/candidateProducer';
 import "./dashboard.css";
 import {customSourcePanel} from "./view/customSourcePanel";
-import {isCustomSource} from "./rpc/customSources";
+import {CUSTOM_STREAM_IDLE_MS,isCustomSource} from "./rpc/customSources";
+import {sourceExclusions} from "./rpc/sourceExclusion";
 import {StreamTransport,type StreamTransportOptions} from "./rpc/streamTransport";
 import {observedPhasePowers,type ObservationTarget} from "./monitor/observationStore";
 import {SourceComparison,type ComparisonSelection} from "./rpc/sourceComparison";
@@ -49,9 +50,29 @@ const collectionAllowed = (): boolean => pageActive && !userPaused && !document.
 const runtimes = new Map<NetworkName, Runtime>();
 let storage:Storage|undefined;try{storage=localStorage;}catch{ /* Storage is optional. */ }
 const navigate=(href:string):void=>{if(href===location.href)location.reload();else location.assign(href);};
-const customPanels={mainnet:customSourcePanel({network:"mainnet",set:customSources.mainnet,pageOrigin:location.origin,href:location.href,storage,navigate}),shadownet:customSourcePanel({network:"shadownet",set:customSources.shadownet,pageOrigin:location.origin,href:location.href,storage,navigate})};
+const panelFor=(network:NetworkName)=>customSourcePanel({network,set:customSources[network],pageOrigin:location.origin,href:location.href,storage,navigate,onUnusable:source=>sourceExclusions.exclude(source)});
+const customPanels={mainnet:panelFor("mainnet"),shadownet:panelFor("shadownet")};
+/**
+ * Monitor streams for one network: custom sources get an idle deadline and are skipped once
+ * excluded; each custom source's stream errors, and their recovery, are reported to its panel row.
+ */
+function reportingStreamFactory(network:NetworkName){
+  return <V>(settings:StreamTransportOptions<V>):StreamTransport<V>=>{
+    let delivered=0;
+    const onStatus:StreamTransportOptions<V>["onStatus"]=(source,error,metrics)=>{
+      if(isCustomSource(source)){
+        if(error!==null)customPanels[network].report(source.baseUrl,settings.path,error);
+        else if(metrics.messages>delivered)customPanels[network].report(source.baseUrl,settings.path,null);
+      }
+      delivered=metrics.messages;
+      settings.onStatus(source,error,metrics);
+    };
+    return new StreamTransport<V>({...settings,onStatus,exclusions:sourceExclusions,idleTimeoutMs:source=>isCustomSource(source)?CUSTOM_STREAM_IDLE_MS:undefined});
+  };
+}
 const dashboard = createDashboard(root, {
   sourceControls:{mainnet:customPanels.mainnet.root,shadownet:customPanels.shadownet.root},
+  sourceNotices:{...(customPanels.mainnet.notice?{mainnet:customPanels.mainnet.notice}:{}),...(customPanels.shadownet.notice?{shadownet:customPanels.shadownet.notice}:{})},
   revision: __APP_REVISION__,
   onNetworkChange(){for(const runtime of runtimes.values())syncCollection(runtime);},
   onReadEligibility(network){const runtime=runtimes.get(network);if(runtime)void readEligibility(runtime);},
@@ -617,7 +638,7 @@ for (const network of ["mainnet", "shadownet"] as const) {
     ...(network==="mainnet"?{fallbackIntervalMs:6_000}:{}),
     proposalSources:rawStreamSources[network],
     // Tap exact (source, error) pairs so a failing custom source gets an actionable diagnosis.
-    streamFactory:<V>(settings:StreamTransportOptions<V>)=>{let delivered=0;return new StreamTransport<V>({...settings,onStatus:(source,error,metrics)=>{if(isCustomSource(source)){if(error!==null)customPanels[network].report(source.baseUrl,settings.path,error);else if(metrics.messages>delivered)customPanels[network].report(source.baseUrl,settings.path,null);}delivered=metrics.messages;settings.onStatus(source,error,metrics);}});},
+    streamFactory:reportingStreamFactory(network),
     derive: (head, signal) => data.derive(head, signal),
     reconcile:async(target,signal,onObservedHead)=>{
       const proof=await data.reconcile(target,signal,onObservedHead);

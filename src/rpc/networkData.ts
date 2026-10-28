@@ -9,6 +9,8 @@ import {proposalRound,tenderbakeFitness} from "../consensus/roundSchedule";
 import {committeeAuthority,contextFacts} from "../consensus/phaseEvidence";
 import { asBlockHeader, asOperationBatch } from "./guards";
 import {readStoredUrls,resolveCustomSources,rpcQueryValues,type CustomSourceSet} from "./customSources";
+import {RPC_BODY_LIMIT,readJsonWithin} from "./boundedBody";
+import {sourceExclusions} from "./sourceExclusion";
 import type {ReconciliationTarget} from "../monitor/observerReconciliation";
 import type { NetworkDerivedState } from "../monitor/networkMonitor";
 
@@ -49,14 +51,21 @@ const builtInSources: Record<NetworkName, readonly RpcSource[]> = {
   ],
 };
 
+// Stream-only built-in providers, kept apart from the helper-capable ones above.
+const builtInStreamOnlySources: Record<NetworkName, readonly RpcSource[]> = {
+  mainnet: [{network: "mainnet", name: "TzKT RPC", baseUrl: "https://rpc.tzkt.io/mainnet"}],
+  shadownet: [],
+};
+
 // Viewer-supplied nodes: `?rpc=` / `?rpc_shadownet=` values, then URLs saved from
 // each network's source panel. Nothing is configured by default. They come first
-// so a custom node is preferred for RPC reads and every monitor stream.
+// so a custom node is preferred for RPC reads and every monitor stream; the
+// observation store still refuses one that is not on the network's chain.
 const pageCustomSources = (network: NetworkName): CustomSourceSet => {
   let search = "", storage: Storage | undefined;
   try {search = globalThis.location?.search ?? "";} catch { /* No page location. */ }
   try {storage = globalThis.localStorage;} catch { /* Storage is optional. */ }
-  const builtIn = network === "mainnet" ? [...builtInSources.mainnet.map(source => source.baseUrl), "https://rpc.tzkt.io/mainnet"] : builtInSources.shadownet.map(source => source.baseUrl);
+  const builtIn = [...builtInSources[network], ...builtInStreamOnlySources[network]].map(source => source.baseUrl);
   return resolveCustomSources(network, {query: rpcQueryValues(search, network), stored: readStoredUrls(storage, network)}, builtIn);
 };
 export const customSources: Readonly<Record<NetworkName, CustomSourceSet>> = {mainnet: pageCustomSources("mainnet"), shadownet: pageCustomSources("shadownet")};
@@ -68,15 +77,8 @@ export const sources: Record<NetworkName, readonly RpcSource[]> = {
 
 // Helper-capable observers remain available for heads, snapshots and comparisons.
 export const streamSources: Record<NetworkName, readonly RpcSource[]> = {
-  mainnet: [
-    ...sources.mainnet,
-    {
-      network: "mainnet",
-      name: "TzKT RPC",
-      baseUrl: "https://rpc.tzkt.io/mainnet",
-    },
-  ],
-  shadownet: sources.shadownet,
+  mainnet: [...sources.mainnet, ...builtInStreamOnlySources.mainnet],
+  shadownet: [...sources.shadownet, ...builtInStreamOnlySources.shadownet],
 };
 
 // Mainnet helper providers reject operation/proposal streams in browsers.
@@ -387,10 +389,11 @@ export class NetworkData {
   private async requestObserved(path: string, signal?: AbortSignal, head?:BlockHeader, exactSource?:RpcSource, strictRedirect=false): Promise<{value:unknown;evidence:ObservationEvidence}> {
     const generation=this.collectionGeneration;
     this.assertCollecting(generation,signal);
+    // A custom source excluded by its startup probe is never read from again.
     const pool = exactSource ? [exactSource] : [
       this.source,
       ...sources[this.network].filter((s) => s !== this.source),
-    ];
+    ].filter(source=>!sourceExclusions.has(source));
     let error: unknown;
     const helper=path.endsWith('/context/constants') || path.includes('/helpers/attestation_rights?') || path.includes('/helpers/baking_rights?');
     for (const source of pool) {
@@ -413,7 +416,7 @@ export class NetworkData {
         }
         if (!response.ok || strictRedirect&&response.redirected)
           throw new Error(`${source.name}: HTTP ${response.status}`);
-        const result: unknown = await response.json();
+        const result: unknown = await readJsonWithin(response,RPC_BODY_LIMIT).catch((failure:unknown)=>{throw failure instanceof Error&&failure.name==='BodyTooLargeError'?new Error(`${source.name}: ${failure.message}`):failure;});
         this.assertCollecting(generation,signal);
         if(!exactSource)this.source = source;
         const pinnedHead = head && path.includes(`/blocks/${head.hash}/`) ? head : undefined;

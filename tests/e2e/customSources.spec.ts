@@ -42,7 +42,8 @@ const row = (page: Page, url: string, network = 'mainnet') => page.locator(`.net
 
 test('custom mainnet sources from ?rpc= are probed and each failure class gets an actionable diagnosis', async ({page}, info) => {
   await nodes(page);
-  await page.goto('/?rpc=https://ok.example:8732/,https://acl.example:8732&rpc=https://down.example:8732&rpc=https://wrong.example&rpc=https://html.example&rpc=https://nf.example/prefix&rpc=https://user:pw@ok.example');
+  // At most four custom sources per network: the six failure classes take two page loads.
+  await page.goto('/?rpc=https://ok.example:8732/,https://acl.example:8732&rpc=https://down.example:8732&rpc=https://wrong.example&rpc=https://user:pw@ok.example');
   const panel = page.locator('.network-panel.mainnet .custom-sources');
   await expect(panel).toBeVisible();
   await expect(row(page, 'https://ok.example:8732')).toContainText('Custom · ok.example:8732');
@@ -58,13 +59,17 @@ test('custom mainnet sources from ?rpc= are probed and each failure class gets a
   await expect(down).toContainText("--cors-origin 'http://127.0.0.1");
   await expect(down).toContainText('--rpc-addr <public-address>:8732');
   await expect(row(page, 'https://wrong.example').locator('.source-diagnosis')).toContainText('Wrong chain: NetXsqzbfFenSTS is not Tezos mainnet');
-  await expect(row(page, 'https://html.example').locator('.source-diagnosis')).toContainText('Not an Octez node RPC: the response is not JSON');
-  await expect(row(page, 'https://nf.example/prefix').locator('.source-diagnosis')).toHaveAttribute('data-class', 'not-exposed');
   await expect(panel.locator('.custom-source.rejected')).toContainText('Credentials in the URL');
   // Custom sources join the shared source list used for streams and RPC reads.
   await expect.poll(() => page.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.startsWith('https://ok.example:8732/monitor/')))).toBe(true);
+  if (shots && info.project.name === 'chromium')
+    for (const [name, url] of [['acl', 'https://acl.example:8732'], ['unreachable-or-cors', 'https://down.example:8732'], ['wrong-chain', 'https://wrong.example'], ['ok', 'https://ok.example:8732']] as const)
+      await row(page, url).screenshot({path: `${shots}/custom-source-${name}.png`});
+  await page.goto('/?rpc=https://html.example&rpc=https://nf.example/prefix');
+  await expect(row(page, 'https://html.example').locator('.custom-source-diagnosis .source-diagnosis')).toContainText('Not an Octez node RPC: the response is not JSON');
+  await expect(row(page, 'https://nf.example/prefix').locator('.custom-source-diagnosis .source-diagnosis')).toHaveAttribute('data-class', 'not-exposed');
   if (shots && info.project.name === 'chromium') {
-    for (const [name, url] of [['acl', 'https://acl.example:8732'], ['unreachable-or-cors', 'https://down.example:8732'], ['wrong-chain', 'https://wrong.example'], ['not-json', 'https://html.example'], ['not-exposed', 'https://nf.example/prefix'], ['ok', 'https://ok.example:8732']] as const)
+    for (const [name, url] of [['not-json', 'https://html.example'], ['not-exposed', 'https://nf.example/prefix']] as const)
       await row(page, url).screenshot({path: `${shots}/custom-source-${name}.png`});
     await panel.screenshot({path: `${shots}/custom-source-panel.png`});
   }

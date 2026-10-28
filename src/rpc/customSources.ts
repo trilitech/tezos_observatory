@@ -1,4 +1,5 @@
 import type {NetworkName, RpcSource} from "./models";
+import {BodyTooLargeError, PROBE_BODY_LIMIT, readJsonWithin} from "./boundedBody";
 
 /** Expected chain per network; a custom source on any other chain is refused. */
 export const CHAIN_IDS: Readonly<Record<NetworkName, string>> = {mainnet: "NetXdQprcVkpaWU", shadownet: "NetXsqzbfFenSTS"};
@@ -9,6 +10,25 @@ export const customSourcesStorageKey = (network: NetworkName): string => `observ
 /** `?rpc=` (or `?rpc_mainnet=`) for mainnet, `?rpc_shadownet=` for shadownet. */
 export const CUSTOM_SOURCES_QUERY_PARAMETERS: Readonly<Record<NetworkName, readonly string[]>> = {mainnet: ["rpc", "rpc_mainnet"], shadownet: ["rpc_shadownet"]};
 export const queryParameter = (network: NetworkName): string => CUSTOM_SOURCES_QUERY_PARAMETERS[network][0]!;
+/** One crafted link must not make a viewer's browser contact many hosts. */
+export const MAX_CUSTOM_SOURCES = 4;
+export const MAX_RPC_URL_LENGTH = 2048;
+/** Rejected rows shown before the remainder is summarized in one row. */
+const MAX_REJECTED_ROWS = 16;
+/**
+ * A custom monitor stream that delivers no message for this long fails over. Heads,
+ * validated blocks and consensus operations arrive every block: 6 s at round 0 on both
+ * networks (minimal_block_delay 6, increment 3 on 2026-10-28); a round-3 block takes 42 s.
+ */
+export const CUSTOM_STREAM_IDLE_MS = 60_000;
+export const BUILT_IN_REASON = "Already a built-in provider: it is used without being added.";
+
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g;
+/** Bounded display form of text a node or a link controls: no control or bidi characters. */
+export function displayText(value: string, max = 120): string {
+  const clean = value.replace(UNSAFE_TEXT, "");
+  return clean.length > max ? `${clean.slice(0, max - 1)}…` : clean;
+}
 
 /** Where a custom source came from: the page URL or browser storage. */
 export type CustomOrigin = "query" | "stored";
@@ -21,9 +41,10 @@ export type UrlCheck = {readonly ok: true; readonly url: string} | {readonly ok:
 export function normalizeRpcUrl(input: string): UrlCheck {
   const text = input.trim();
   if (text === "") return {ok: false, reason: "Enter a node RPC URL such as https://node.example.org:8732."};
+  if (text.length > MAX_RPC_URL_LENGTH) return {ok: false, reason: `The URL is longer than ${MAX_RPC_URL_LENGTH} characters.`};
   if (!/^https?:\/\//i.test(text)) return {ok: false, reason: "Only http:// and https:// URLs are accepted; include the scheme, e.g. https://node.example.org:8732."};
   let url: URL;
-  try {url = new URL(text);} catch {return {ok: false, reason: `"${text}" is not a valid URL.`};}
+  try {url = new URL(text);} catch {return {ok: false, reason: `"${displayText(text, 80)}" is not a valid URL.`};}
   if (url.protocol !== "http:" && url.protocol !== "https:") return {ok: false, reason: "Only http:// and https:// URLs are accepted."};
   if (url.username !== "" || url.password !== "")
     return {ok: false, reason: "Credentials in the URL (user:password@host) are refused: they would be stored in this browser and sent with every request. Put authentication in a reverse proxy instead."};
@@ -31,7 +52,9 @@ export function normalizeRpcUrl(input: string): UrlCheck {
   if (url.search !== "" || url.hash !== "" || /[?#]/.test(text))
     return {ok: false, reason: "Remove the query string or fragment: the Observatory appends RPC paths such as /version to this base URL."};
   const path = url.pathname.replace(/\/+$/, "");
-  return {ok: true, url: `${url.protocol}//${url.host}${path}`};
+  // A fully qualified name (h.example.) is the same host as h.example.
+  const host = `${url.hostname.replace(/\.$/, "")}${url.port === "" ? "" : `:${url.port}`}`;
+  return {ok: true, url: `${url.protocol}//${host}${path}`};
 }
 
 /** `?rpc=a&rpc=b` and `?rpc=a,b` are both accepted; each network has its own parameter names. */
@@ -60,26 +83,34 @@ export function writeStoredUrls(storage: Pick<Storage, "setItem"> | undefined, n
 
 export const customSourceName = (url: string): string => `Custom · ${url.replace(/^https?:\/\//, "")}`;
 
+export interface RejectedInput {readonly input: string; readonly origin: CustomOrigin; readonly reason: string}
 export interface CustomSourceSet {
   readonly sources: readonly CustomSource[];
-  readonly rejected: readonly {readonly input: string; readonly origin: CustomOrigin; readonly reason: string}[];
+  readonly rejected: readonly RejectedInput[];
+  /** Built-in provider base URLs of this network; never accepted as custom sources. */
+  readonly builtIn: readonly string[];
 }
 
-/** Query sources first (explicit for this view), then stored; built-ins are not duplicated. */
+/** Query sources first (explicit for this view), then stored; built-ins are reported, at most MAX_CUSTOM_SOURCES kept. */
 export function resolveCustomSources(network: NetworkName, inputs: {readonly query: readonly string[]; readonly stored: readonly string[]}, builtIn: readonly string[]): CustomSourceSet {
-  const seen = new Set(builtIn), sources: CustomSource[] = [], rejected: {input: string; origin: CustomOrigin; reason: string}[] = [];
+  const builtInUrls = new Set(builtIn), seen = new Set<string>(), sources: CustomSource[] = [], rejected: RejectedInput[] = [];
   const candidates: [string, CustomOrigin][] = [
     ...inputs.query.map(value => [value, "query"] as [string, CustomOrigin]),
     ...inputs.stored.map(value => [value, "stored"] as [string, CustomOrigin]),
   ];
+  let ignored = 0;
+  const reject = (item: RejectedInput): void => {if (rejected.length < MAX_REJECTED_ROWS) rejected.push(item); else ignored++;};
   for (const [input, origin] of candidates) {
     const checked = normalizeRpcUrl(input);
-    if (!checked.ok) {rejected.push({input, origin, reason: checked.reason}); continue;}
+    if (!checked.ok) {reject({input, origin, reason: checked.reason}); continue;}
+    if (builtInUrls.has(checked.url)) {reject({input, origin, reason: BUILT_IN_REASON}); continue;}
     if (seen.has(checked.url)) continue;
+    if (sources.length >= MAX_CUSTOM_SOURCES) {reject({input, origin, reason: `Ignored: at most ${MAX_CUSTOM_SOURCES} custom sources per network are used.`}); continue;}
     seen.add(checked.url);
     sources.push(Object.freeze({network, name: customSourceName(checked.url), baseUrl: checked.url, custom: origin}));
   }
-  return {sources, rejected};
+  if (ignored > 0) rejected.push({input: `${ignored} more`, origin: candidates.at(-1)?.[1] ?? "query", reason: `${ignored} more values ignored.`});
+  return {sources, rejected, builtIn};
 }
 
 export const isCustomSource = (source: RpcSource | null | undefined): source is CustomSource =>
@@ -137,7 +168,9 @@ export type RpcFailure =
   | {readonly kind: "http"; readonly status: number}
   | {readonly kind: "not-json"}
   | {readonly kind: "wrong-chain"; readonly chainId: string | undefined}
-  | {readonly kind: "stream-closed"};
+  | {readonly kind: "stream-closed"}
+  | {readonly kind: "stream-idle"}
+  | {readonly kind: "too-large"; readonly limit: number};
 
 const errorName = (error: unknown): string => typeof error === "object" && error !== null && "name" in error ? String((error as {name: unknown}).name) : "";
 const errorText = (error: unknown): string => error instanceof Error ? error.message : String(error);
@@ -147,6 +180,7 @@ export function classifyFetchError(error: unknown): RpcFailure {
   const name = errorName(error);
   if (name === "AbortError" || name === "TimeoutError") return {kind: "timeout"};
   if (error instanceof SyntaxError) return {kind: "not-json"};
+  if (error instanceof BodyTooLargeError) return {kind: "too-large", limit: error.limit};
   return {kind: "network", message: errorText(error)};
 }
 
@@ -155,13 +189,16 @@ export function classifyErrorMessage(message: string): RpcFailure | undefined {
   const status = /\bHTTP (\d{3})\b/.exec(message);
   if (status) return {kind: "http", status: Number(status[1])};
   if (/RPC stream closed/i.test(message)) return {kind: "stream-closed"};
+  if (/RPC stream idle/i.test(message)) return {kind: "stream-idle"};
+  const tooLarge = /RPC response too large: over (\d+) bytes/.exec(message);
+  if (tooLarge) return {kind: "too-large", limit: Number(tooLarge[1])};
   if (/timed? ?out|timeout|aborted/i.test(message)) return {kind: "timeout"};
   if (/Failed to fetch|NetworkError|Load failed|network|fetch/i.test(message)) return {kind: "network", message};
   if (/JSON/i.test(message)) return {kind: "not-json"};
   return undefined;
 }
 
-export type DiagnosisClass = "mixed-content" | "unreachable-or-cors" | "acl" | "not-exposed" | "not-octez" | "wrong-network" | "timeout" | "stream" | "http";
+export type DiagnosisClass = "mixed-content" | "unreachable-or-cors" | "acl" | "not-exposed" | "not-octez" | "wrong-network" | "timeout" | "stream" | "http" | "oversized";
 export interface Diagnosis {
   readonly class: DiagnosisClass;
   readonly title: string;
@@ -184,6 +221,9 @@ export interface DiagnosisContext {
 const loopback = (hostname: string): boolean => hostname === "localhost" || hostname.endsWith(".localhost") || hostname === "[::1]" || /^127\./.test(hostname);
 const privateAddress = (hostname: string): boolean => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(hostname) || /^\[f[cd]/i.test(hostname) || hostname.endsWith(".local");
 const hostPort = (url: URL): string => `${url.hostname}:${url.port || (url.protocol === "https:" ? "443" : "80")}`;
+
+const streamProxyFix = "In a reverse proxy, disable response buffering and long read timeouts for /monitor/ and /chains/main/mempool/monitor_operations (nginx: proxy_buffering off; proxy_read_timeout 1h).";
+const mebibytes = (bytes: number): string => bytes % 1_048_576 === 0 ? `${bytes / 1_048_576} MiB` : `${bytes} bytes`;
 
 export function diagnose(failure: RpcFailure, context: DiagnosisContext): Diagnosis {
   let source: URL, page: URL | undefined;
@@ -272,7 +312,7 @@ export function diagnose(failure: RpcFailure, context: DiagnosisContext): Diagno
       const network = context.network ?? "mainnet", expected = CHAIN_IDS[network];
       return {
         class: "wrong-network",
-        title: `Wrong chain: ${failure.chainId ?? "no chain_id"} is not Tezos ${network}`,
+        title: `Wrong chain: ${failure.chainId === undefined ? "no chain_id" : displayText(failure.chainId, 60)} is not Tezos ${network}`,
         summary: `This node does not serve ${network} (chain_id ${expected}); a ${NETWORK_LABELS[network]} custom source must be a ${network} node.${failure.chainId === CHAIN_IDS[network === "mainnet" ? "shadownet" : "mainnet"] ? ` It is a ${network === "mainnet" ? "shadownet" : "mainnet"} node: add it to the ${network === "mainnet" ? "Shadownet" : "Mainnet"} panel instead.` : ""}`,
         checks: [`curl -sS ${context.sourceUrl}/chains/main/chain_id must print "${expected}".`],
         fixes: [`Use a node started with --network ${network}.`],
@@ -292,12 +332,31 @@ export function diagnose(failure: RpcFailure, context: DiagnosisContext): Diagno
         title: `Monitor stream ${context.path.split("?")[0]} closed or sent nothing`,
         summary: "The node accepted the request but the streamed response ended or stayed empty. Reverse proxies often buffer or cut chunked responses.",
         checks: [`curl -sS -N --max-time 20 '${target}' must print a JSON object every block.`],
-        fixes: ["In a reverse proxy, disable response buffering and long read timeouts for /monitor/ and /chains/main/mempool/monitor_operations (nginx: proxy_buffering off; proxy_read_timeout 1h)."],
+        fixes: [streamProxyFix],
+      };
+    case "stream-idle":
+      return {
+        class: "stream",
+        title: `Monitor stream ${context.path.split("?")[0]} sent nothing for ${CUSTOM_STREAM_IDLE_MS / 1000} s`,
+        summary: "The node accepted the request and kept it open, but no message arrived, so the Observatory switched to the next source. A reverse proxy that buffers chunked responses, or a node that is not following the chain, does this.",
+        checks: [`curl -sS -N --max-time 30 '${target}' must print a JSON object every block.`, "Check the node is bootstrapped: GET /chains/main/is_bootstrapped."],
+        fixes: [streamProxyFix],
+      };
+    case "too-large":
+      return {
+        class: "oversized",
+        title: `Response from ${source.host} is larger than ${mebibytes(failure.limit)}`,
+        summary: `The answer to ${context.path.split("?")[0]} exceeded the Observatory's size limit and was discarded. An Octez node does not send responses of this size for these RPCs; the URL may point to another service.`,
+        checks: [`curl -sS -o /dev/null -w '%{size_download}\\n' '${target}'`],
+        fixes: ["Point to the octez-node RPC root, or to the proxy path that forwards to it unchanged."],
       };
   }
 }
 
 /* ---------- Probe ---------- */
+
+/** A source failing this way serves no usable data for its network, so reads and streams skip it. */
+export const unusableFailure = (failure: RpcFailure): boolean => failure.kind === "wrong-chain" || failure.kind === "not-json" || failure.kind === "too-large";
 
 export type ProbeOutcome =
   | {readonly ok: true; readonly chainId: string; readonly version: string; readonly stream: "value" | "open-no-data"}
@@ -306,13 +365,16 @@ export type ProbeOutcome =
 type JsonRecord = Record<string, unknown>;
 const record = (value: unknown): value is JsonRecord => typeof value === "object" && value !== null && !Array.isArray(value);
 
+const versionPart = (value: unknown): string => typeof value === "number" && Number.isSafeInteger(value) ? String(value) : "?";
+/** Node-controlled /version text, bounded; a chain name outside [A-Za-z0-9_.:-] is shown quoted. */
 function versionText(value: JsonRecord): string {
   const version = record(value["version"]) ? value["version"] : {};
   const network = record(value["network_version"]) ? value["network_version"] : {};
   const info = version["additional_info"];
   const suffix = typeof info === "string" ? (info === "release" ? "" : `-${info}`) : record(info) ? Object.entries(info).map(([key, item]) => `~${key}${String(item)}`).join("") : "";
-  const name = typeof network["chain_name"] === "string" ? ` · ${network["chain_name"]}` : "";
-  return `Octez ${String(version["major"] ?? "?")}.${String(version["minor"] ?? "?")}${suffix}${name}`;
+  const chain = network["chain_name"];
+  const name = typeof chain !== "string" ? "" : /^[A-Za-z0-9_.:-]{1,80}$/.test(chain) ? ` · ${chain}` : ` · chain_name "${displayText(chain, 60)}"`;
+  return `Octez ${versionPart(version["major"])}.${versionPart(version["minor"])}${displayText(suffix, 40)}${name}`;
 }
 
 /**
@@ -327,8 +389,8 @@ export async function probeSource(baseUrl: string, options: {readonly expectedCh
     try {response = await request(`${baseUrl}${path}`, {cache: "no-store", credentials: "omit", signal: signal(timeoutMs), headers: {accept: "application/json"}});}
     catch (error) {return {ok: false, failure: classifyFetchError(error)};}
     if (!response.ok) return {ok: false, failure: {kind: "http", status: response.status}};
-    try {return {ok: true, value: await response.json() as unknown};}
-    catch (error) {return {ok: false, failure: errorName(error) === "AbortError" || errorName(error) === "TimeoutError" ? {kind: "timeout"} : {kind: "not-json"}};}
+    try {return {ok: true, value: await readJsonWithin(response, PROBE_BODY_LIMIT)};}
+    catch (error) {const failure = classifyFetchError(error); return {ok: false, failure: failure.kind === "network" ? {kind: "not-json"} : failure};}
   };
   // The head header is decisive: reachability, CORS, JSON and chain_id. /version is
   // informational only; proxies often do not forward it (nor add CORS to their 404).
@@ -338,6 +400,7 @@ export async function probeSource(baseUrl: string, options: {readonly expectedCh
   const chainId = record(header.value) && typeof header.value["chain_id"] === "string" ? header.value["chain_id"] : undefined;
   if (chainId !== (options.expectedChainId ?? MAINNET_CHAIN_ID)) return {ok: false, path: headerPath, failure: {kind: "wrong-chain", chainId}};
   const versionRead = await json("/version");
+  if (!versionRead.ok && versionRead.failure.kind === "too-large") return {ok: false, path: "/version", failure: versionRead.failure};
   const versionLabel = versionRead.ok && record(versionRead.value) && record(versionRead.value["version"]) ? versionText(versionRead.value) : "version unavailable (/version not exposed)";
   const streamPath = "/monitor/heads/main";
   const controller = new AbortController(), stop = AbortSignal.any([controller.signal, ...(options.signal ? [options.signal] : [])]);

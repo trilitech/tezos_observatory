@@ -2,6 +2,7 @@ import {describe, expect, it} from "vitest";
 import {readFileSync, readdirSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {
+  BUILT_IN_REASON,
   CHAIN_IDS,
   MAINNET_CHAIN_ID,
   customSourcesStorageKey,
@@ -58,13 +59,14 @@ describe("custom source URL validation", () => {
     expect(rpcQueryValues("", "mainnet")).toEqual([]);
     expect([queryParameter("mainnet"), queryParameter("shadownet")]).toEqual(["rpc", "rpc_shadownet"]);
   });
-  it("orders query then stored sources, dedupes and skips built-ins", () => {
+  it("orders query then stored sources, dedupes and reports built-ins as rejected", () => {
     const set = resolveCustomSources("mainnet", {query: ["https://q.example:8732", "https://bad@q.example", "https://mainnet.smartpy.io/"], stored: ["https://q.example:8732/", "http://stored.example:8732"]}, ["https://mainnet.smartpy.io"]);
     expect(set.sources.map(source => [source.baseUrl, source.custom])).toEqual([["https://q.example:8732", "query"], ["http://stored.example:8732", "stored"]]);
     expect(set.sources.every(source => source.network === "mainnet" && isCustomSource(source))).toBe(true);
     expect(set.sources[0]?.name).toBe(customSourceName("https://q.example:8732"));
     expect(set.sources[0]?.name).toBe("Custom · q.example:8732");
-    expect(set.rejected).toEqual([expect.objectContaining({input: "https://bad@q.example", origin: "query"})]);
+    expect(set.rejected).toEqual([expect.objectContaining({input: "https://bad@q.example", origin: "query"}), {input: "https://mainnet.smartpy.io/", origin: "query", reason: BUILT_IN_REASON}]);
+    expect(set.builtIn).toEqual(["https://mainnet.smartpy.io"]);
     expect(isCustomSource({network: "mainnet", name: "SmartPy", baseUrl: "https://mainnet.smartpy.io"})).toBe(false);
     expect(resolveCustomSources("shadownet", {query: ["https://s.example"], stored: []}, []).sources[0]?.network).toBe("shadownet");
   });
@@ -175,15 +177,28 @@ describe("RPC paths and ACL", () => {
     expect(aclRuleMatches("GET /chains/*/blocks/*/header", "POST", "/chains/main/blocks/head/header")).toBe(false);
     expect(aclRuleMatches("GET /chains/*/blocks/*/header", "GET", "/chains/main/blocks/head/header/shell")).toBe(false);
   });
+  /** Node RPC path literals in src/: quoted ("/chains/…", base + "/network/…") or after a leading `${base}` in a template. */
+  const nodePathLiterals = (text: string): string[] => {
+    const roots = "chains|monitor|version|network|injection|protocols|workers|stats|config|describe|errors|private|fetch_protocol";
+    const joined = text.replace(/`\s*\+\s*`/g, "");
+    return [
+      ...[...joined.matchAll(new RegExp(`["'\`](\\/(?:${roots})(?:[/?][^"'\`]*)?)["'\`]`, "g"))].map(match => match[1]!),
+      ...[...joined.matchAll(new RegExp(`\`\\$\\{[^}]*\\}(\\/(?:${roots})(?:[/?][^\`]*)?)\``, "g"))].map(match => match[1]!),
+    ].map(path => path.replace(/\$\{[^}]*\}/g, "X"));
+  };
+  it("finds node paths however the URL string is built", () => {
+    expect(nodePathLiterals("fetch(`${base}/chains/main/blocks/${hash}/header`)")).toEqual(["/chains/main/blocks/X/header"]);
+    expect(nodePathLiterals('fetch(base + "/network/peers")')).toEqual(["/network/peers"]);
+    expect(nodePathLiterals("request(`/chains/main/` + `mempool/x`)")).toEqual(["/chains/main/mempool/x"]);
+    expect(nodePathLiterals('fetch(`${tzkt}/v1/delegates`); url.endsWith("/header")')).toEqual([]);
+  });
   it("covers every RPC path the production source sends", () => {
     const files: string[] = [];
-    const walk = (dir: string): void => {for (const name of readdirSync(dir)) {const path = join(dir, name); if (statSync(path).isDirectory()) {if (name !== "fixtures") walk(path);} else if (path.endsWith(".ts")) files.push(path);}};
+    // Baker tracking reads fixed public endpoints only (src/rpc/bakerTracking.ts), never a custom source.
+    const walk = (dir: string): void => {for (const name of readdirSync(dir)) {const path = join(dir, name); if (statSync(path).isDirectory()) {if (name !== "fixtures") walk(path);} else if (path.endsWith(".ts") && name !== "bakerTracking.ts") files.push(path);}};
     walk(join(__dirname, "../../src"));
     const paths = new Set<string>();
-    for (const file of files) {
-      const text = readFileSync(file, "utf8").replace(/`\s*\+\s*`/g, "");
-      for (const match of text.matchAll(/["'`](\/(?:chains|monitor|version)[^"'`]*)["'`]/g)) paths.add(match[1]!.replace(/\$\{[^}]*\}/g, "X"));
-    }
+    for (const file of files) for (const path of nodePathLiterals(readFileSync(file, "utf8"))) paths.add(path);
     expect(paths.size).toBeGreaterThan(10);
     const uncovered = [...paths].filter(path => !REQUIRED_RPCS.some(rpc => aclRuleMatches(rpc.rule, "GET", path)));
     expect(uncovered).toEqual([]);
