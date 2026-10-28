@@ -106,6 +106,77 @@ heuristic flags proposal rounds of 3 or more, or a block older than the larger
 of 30 seconds and five minimum block delays. It is an operational indicator,
 not an independent verification of consensus or finality.
 
+## Custom RPC sources
+
+A viewer can use any Octez node of the selected network as an RPC source,
+without rebuilding the site:
+
+| Network | URL parameter | Expected `chain_id` |
+| --- | --- | --- |
+| Mainnet | `?rpc=https://your-node.example` (alias `rpc_mainnet`) | `NetXdQprcVkpaWU` |
+| Shadownet | `?rpc_shadownet=https://your-node.example` | `NetXsqzbfFenSTS` |
+
+Each parameter can be repeated or hold comma-separated URLs, and both can be
+combined, for example
+`?rpc=https://mainnet-node.example&rpc_shadownet=https://shadownet-node.example`.
+Each network's "Sources & limits" pane also has a **Check & add** control that
+saves the URL in this browser (`localStorage`, one list per network) and a
+**Remove** button. Custom sources are labelled `Custom · host` and are tried
+before the built-in providers for RPC reads and the head, mempool and proposal
+monitor streams; the existing failover is unchanged. Adding or removing a
+source reloads the page. No custom source is configured by default.
+
+Only `http(s)` URLs without credentials, query or fragment are accepted;
+trailing slashes are removed. Each custom source is probed on load and before
+it is added: `GET /chains/main/blocks/head/header` (reachability, CORS, JSON and
+the network's `chain_id`), `GET /version` for a label only (reverse proxies
+often do not forward it), then a short read of `/monitor/heads/main`. A failing
+source gets a diagnosis with checks and fixes:
+
+- browser network error: unreachable host or port, firewall, node bound to
+  `127.0.0.1`, missing CORS, TLS failure, or mixed content when an `https`
+  page calls an `http` node (the browser reports all of these identically,
+  except mixed content, which the page can detect);
+- HTTP 403: the node's RPC ACL;
+- HTTP 404/405: wrong path prefix or endpoint not forwarded;
+- non-JSON answer, or a `chain_id` of another network.
+
+A node serving the Observatory needs, for example:
+
+```sh
+octez-node run --rpc-addr <public-address>:8732 \
+  --cors-origin '<Observatory origin>' --cors-header 'Content-Type' \
+  --rpc-tls <cert.pem>,<key.pem>    # or a TLS reverse proxy, when the page is https
+```
+
+On a non-loopback listening address Octez applies a restrictive default ACL
+(`src/lib_rpc_http/RPC_server.ml`) that refuses the streams and rights helpers.
+`--allow-all-rpc <public-address>:8732` opens every RPC (discouraged); an
+explicit `acl` whitelist in `config.json` can allow just the RPCs the
+Observatory sends:
+
+```
+GET /version                                        (optional)
+GET /chains/*/chain_id
+GET /chains/*/blocks/*/header
+GET /chains/*/blocks/*/protocols
+GET /chains/*/blocks/*/metadata
+GET /chains/*/blocks/*/context/constants
+GET /chains/*/blocks/*/context/delegates/*/**
+GET /chains/*/mempool/pending_operations
+GET /chains/*/blocks/*/helpers/attestation_rights   *
+GET /chains/*/blocks/*/helpers/baking_rights        *
+GET /monitor/heads/*                                *
+GET /chains/*/mempool/monitor_operations            *
+GET /monitor/validated_blocks                       *
+```
+
+Entries marked `*` are outside the default ACL. A whitelist replaces the
+default list, so it must name all of them. `REQUIRED_RPCS` in
+`src/rpc/customSources.ts` is the source of truth; a unit test checks that it
+covers every node RPC path in `src/`. Baker tracking, aliases and block
+intervals keep using their TzKT endpoints.
+
 ## Completed-block intervals
 
 Each network has three empirical means: **1 week, 24 hours and 1 hour**

@@ -278,7 +278,7 @@ function delegateList(network: Network, phase: 'Pre' | 'Att' | 'Committee') {
   return {root:details,update(delegates:DelegateView[]|undefined,total:number|undefined,observations:readonly string[]=[]){current=delegates;currentTotal=total;unknownFacts=observations;render();}};
 }
 
-export function createDashboard(root: HTMLElement, options: {onReadEligibility?:(network:Network)=>void;onNetworkChange?:(network:Network)=>void;onRefreshIntervals?:(network:Network)=>void;onPauseChange?: (paused: boolean) => void; onReconnect?: () => void; revision?: string; onSelect?: (network:Network, identity:string)=>void;onRetry?: (network:Network,identity:string)=>void;onPin?:(network:Network)=>void;onFollow?:(network:Network)=>void;onLatest?:(network:Network)=>void;onCompare?:(network:Network,url:string)=>void} = {}): {update(network: Network, model: NetworkViewModel): void; tick(now?: number): void} {
+export function createDashboard(root: HTMLElement, options: {sourceControls?:Partial<Record<Network,HTMLElement>>;onReadEligibility?:(network:Network)=>void;onNetworkChange?:(network:Network)=>void;onRefreshIntervals?:(network:Network)=>void;onPauseChange?: (paused: boolean) => void; onReconnect?: () => void; revision?: string; onSelect?: (network:Network, identity:string)=>void;onRetry?: (network:Network,identity:string)=>void;onPin?:(network:Network)=>void;onFollow?:(network:Network)=>void;onLatest?:(network:Network)=>void;onCompare?:(network:Network,url:string)=>void} = {}): {update(network: Network, model: NetworkViewModel): void; tick(now?: number): void} {
   root.classList.add('consensus-app');
   const header = el('header', 'masthead'), brand = el('div', 'header-brand');
   const mark = el('img', 'header-mark'); mark.src='./observatory-mark.svg'; mark.alt=''; mark.width=40; mark.height=40;
@@ -408,7 +408,7 @@ export function createDashboard(root: HTMLElement, options: {onReadEligibility?:
     const authorityEvidence=el('p','authority-evidence table-note');
     const sourceRows = el('div', 'source-rows'), history = el('ol', 'event-history'); evidence.body.append(metadata, authorityEvidence, sourceRows, el('h4', '', 'Recent network events'), history);
     const observer = el('section', 'observer-summary'); observer.append(panelHeader, connection, headline, appliedContext,nextProposalObservation);
-    const sourcePane = el('aside', 'source-pane'); sourcePane.append(el('h3', '', 'Sources & limits'),contextProof.details,sourceRows,comparisonSection,evidence.details);evidence.body.prepend(authorityEvidence);
+    const sourcePane = el('aside', 'source-pane'); sourcePane.append(el('h3', '', 'Sources & limits'),contextProof.details,sourceRows,...(options.sourceControls?.[network]?[options.sourceControls[network]]:[]),comparisonSection,evidence.details);evidence.body.prepend(authorityEvidence);
     inspector.append(selectedHeader,selectedRelationship, selectedKind,selectedPayload,proposalContext,alternatives,consensus,notice,missing);
     const intervals=blockIntervalRegion(network,()=>options.onRefreshIntervals?.(network));
     const workspace=el('div','inspection-workspace'); workspace.append(sessionRail,inspector,intervals.root,committee.root,sourcePane);

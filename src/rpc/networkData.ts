@@ -8,10 +8,11 @@ import type {
 import {proposalRound,tenderbakeFitness} from "../consensus/roundSchedule";
 import {committeeAuthority,contextFacts} from "../consensus/phaseEvidence";
 import { asBlockHeader, asOperationBatch } from "./guards";
+import {readStoredUrls,resolveCustomSources,rpcQueryValues,type CustomSourceSet} from "./customSources";
 import type {ReconciliationTarget} from "../monitor/observerReconciliation";
 import type { NetworkDerivedState } from "../monitor/networkMonitor";
 
-export const sources: Record<NetworkName, readonly RpcSource[]> = {
+const builtInSources: Record<NetworkName, readonly RpcSource[]> = {
   mainnet: [
     {
       network: "mainnet",
@@ -48,6 +49,23 @@ export const sources: Record<NetworkName, readonly RpcSource[]> = {
   ],
 };
 
+// Viewer-supplied nodes: `?rpc=` / `?rpc_shadownet=` values, then URLs saved from
+// each network's source panel. Nothing is configured by default. They come first
+// so a custom node is preferred for RPC reads and every monitor stream.
+const pageCustomSources = (network: NetworkName): CustomSourceSet => {
+  let search = "", storage: Storage | undefined;
+  try {search = globalThis.location?.search ?? "";} catch { /* No page location. */ }
+  try {storage = globalThis.localStorage;} catch { /* Storage is optional. */ }
+  const builtIn = network === "mainnet" ? [...builtInSources.mainnet.map(source => source.baseUrl), "https://rpc.tzkt.io/mainnet"] : builtInSources.shadownet.map(source => source.baseUrl);
+  return resolveCustomSources(network, {query: rpcQueryValues(search, network), stored: readStoredUrls(storage, network)}, builtIn);
+};
+export const customSources: Readonly<Record<NetworkName, CustomSourceSet>> = {mainnet: pageCustomSources("mainnet"), shadownet: pageCustomSources("shadownet")};
+
+export const sources: Record<NetworkName, readonly RpcSource[]> = {
+  mainnet: [...customSources.mainnet.sources, ...builtInSources.mainnet],
+  shadownet: [...customSources.shadownet.sources, ...builtInSources.shadownet],
+};
+
 // Helper-capable observers remain available for heads, snapshots and comparisons.
 export const streamSources: Record<NetworkName, readonly RpcSource[]> = {
   mainnet: [
@@ -64,7 +82,7 @@ export const streamSources: Record<NetworkName, readonly RpcSource[]> = {
 // Mainnet helper providers reject operation/proposal streams in browsers.
 // Retain TzKT raw streams separately; its restricted helpers never prove another source.
 export const rawStreamSources:Record<NetworkName,readonly RpcSource[]>={
-  mainnet:streamSources.mainnet.filter(source=>!sources.mainnet.some(helper=>helper.baseUrl===source.baseUrl)),
+  mainnet:[...customSources.mainnet.sources,...streamSources.mainnet.filter(source=>!sources.mainnet.some(helper=>helper.baseUrl===source.baseUrl))],
   shadownet:sources.shadownet,
 };
 
